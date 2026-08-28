@@ -4,24 +4,50 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FirstPasswordController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\ProfileController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Hrd\HrdDashboardController;
 use App\Http\Controllers\Hrd\HrdLeaveRequestController;
+use App\Http\Controllers\Hrd\HrdEmployeeController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
 | ROOT
 |--------------------------------------------------------------------------
-|
-| Setelah logout Laravel Breeze biasanya redirect ke "/".
-| Jadi route ini wajib ada.
-|
 */
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('dashboard')
-        : redirect()->route('login');
+
+    if (! auth()->check()) {
+        return redirect()
+            ->route('login');
+    }
+
+    $user = auth()->user();
+
+    /*
+     * HRD / Admin masuk ke Dashboard HRD.
+     */
+    if (
+        in_array(
+            $user->role,
+            [
+                'hrd',
+                'admin',
+                'superadmin',
+            ],
+            true
+        )
+    ) {
+        return redirect()
+            ->route('hrd.dashboard');
+    }
+
+    /*
+     * Karyawan masuk ke Dashboard Employee.
+     */
+    return redirect()
+        ->route('dashboard');
 });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +66,7 @@ Route::middleware('auth')->group(function () {
         [FirstPasswordController::class, 'update']
     )->name('password.first.update');
 });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -79,6 +106,7 @@ Route::middleware('auth')->group(function () {
     )->name('leave-requests.cancel');
 });
 
+
 /*
 |--------------------------------------------------------------------------
 | HRD
@@ -87,15 +115,27 @@ Route::middleware('auth')->group(function () {
 Route::middleware([
     'auth',
     'hrd',
-])->prefix('hrd')
+])
+    ->prefix('hrd')
     ->name('hrd.')
     ->group(function () {
 
+        /*
+        |--------------------------------------------------------------------------
+        | DASHBOARD
+        |--------------------------------------------------------------------------
+        */
         Route::get(
             '/dashboard',
             [HrdDashboardController::class, 'index']
         )->name('dashboard');
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | PENGAJUAN
+        |--------------------------------------------------------------------------
+        */
         Route::get(
             '/pengajuan',
             [HrdLeaveRequestController::class, 'index']
@@ -115,7 +155,24 @@ Route::middleware([
             '/pengajuan/{leaveRequest}/reject',
             [HrdLeaveRequestController::class, 'reject']
         )->name('leave-requests.reject');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | KARYAWAN
+        |--------------------------------------------------------------------------
+        */
+        Route::get(
+            '/karyawan',
+            [HrdEmployeeController::class, 'index']
+        )->name('employees.index');
+
+        Route::post(
+            '/karyawan/{employee}/reset-password',
+            [HrdEmployeeController::class, 'resetPassword']
+        )->name('employees.reset-password');
     });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -139,6 +196,7 @@ Route::middleware('auth')->group(function () {
         [ProfileController::class, 'destroy']
     )->name('profile.destroy');
 });
+
 
 /*
 |--------------------------------------------------------------------------

@@ -26,29 +26,29 @@ class AuthenticatedSessionController extends Controller
     {
         /*
         |--------------------------------------------------------------------------
-        | AUTHENTICATE DULU
+        | AUTHENTICATE
         |--------------------------------------------------------------------------
-        |
-        | Ini WAJIB dilakukan sebelum mengambil $request->user().
-        |
         */
         $request->authenticate();
 
         /*
-         * Regenerate session setelah login berhasil.
+         * Regenerate session setelah login.
          */
         $request->session()->regenerate();
 
-        /*
-         * Sekarang user sudah tersedia.
-         */
         $user = $request->user();
 
         /*
         |--------------------------------------------------------------------------
         | REDIRECT BERDASARKAN ROLE
         |--------------------------------------------------------------------------
+        |
+        | Jangan gunakan redirect()->intended()
+        | karena bisa membawa HRD ke halaman employee
+        | berdasarkan URL yang tersimpan sebelumnya.
+        |
         */
+
         if (
             in_array(
                 $user->role,
@@ -60,23 +60,15 @@ class AuthenticatedSessionController extends Controller
                 true
             )
         ) {
-            return redirect()->intended(
-                route(
-                    'hrd.dashboard',
-                    absolute: false
-                )
-            );
+            return redirect()
+                ->route('hrd.dashboard');
         }
 
         /*
          * Karyawan biasa.
          */
-        return redirect()->intended(
-            route(
-                'dashboard',
-                absolute: false
-            )
-        );
+        return redirect()
+            ->route('dashboard');
     }
 
     /**
