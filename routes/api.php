@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\FaceLogLeaveRequestController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\FaceLogEmployeeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -62,4 +63,35 @@ Route::prefix('facelog')
                 'reject',
             ]
         );
+    });
+
+Route::prefix('facelog')
+    ->middleware('facelog.token')
+    ->group(function () {
+
+        Route::post(
+            '/employees/sync',
+            [FaceLogEmployeeController::class, 'sync']
+        );
+
+        Route::get(
+            '/leave-requests',
+            [FaceLogLeaveRequestController::class, 'index']
+        );
+
+        Route::get(
+            '/leave-requests/{uuid}',
+            [FaceLogLeaveRequestController::class, 'show']
+        );
+
+        Route::post(
+            '/leave-requests/{uuid}/approve',
+            [FaceLogLeaveRequestController::class, 'approve']
+        );
+
+        Route::post(
+            '/leave-requests/{uuid}/reject',
+            [FaceLogLeaveRequestController::class, 'reject']
+        );
+
     });
