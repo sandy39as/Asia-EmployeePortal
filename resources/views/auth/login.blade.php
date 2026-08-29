@@ -1,104 +1,75 @@
 <x-guest-layout>
-
     <div class="mb-6 text-center">
-        <h1 class="text-2xl font-bold text-gray-900">
-            Asia Employee Portal
+        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            Masuk ke Akun
         </h1>
-
-        <p class="mt-2 text-sm text-gray-500">
-            Masuk menggunakan ID Karyawan Anda
+        <p class="mt-1.5 text-xs sm:text-sm text-slate-500 font-medium">
+            Gunakan ID Karyawan Anda untuk melanjutkan
         </p>
     </div>
 
-    <form method="POST"
-          action="{{ route('login') }}">
-
+    <form method="POST" action="{{ route('login') }}" class="space-y-4 sm:space-y-5">
         @csrf
 
         {{-- ID KARYAWAN --}}
         <div>
-
-            <x-input-label
-                for="username"
-                value="ID Karyawan"
-            />
-
-            <x-text-input
+            <label for="username" class="block text-xs sm:text-sm font-extrabold text-slate-700 mb-1.5">
+                ID Karyawan
+            </label>
+            <input
                 id="username"
-                class="mt-1 block w-full uppercase"
                 type="text"
                 name="username"
-                :value="old('username')"
+                value="{{ old('username') }}"
                 required
                 autofocus
                 autocomplete="username"
                 placeholder="Contoh: A0403"
+                class="w-full uppercase rounded-xl border border-[#d1d5db] bg-white px-4 py-3 text-sm sm:text-base font-semibold text-slate-900 placeholder-slate-400 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 transition shadow-xs"
             />
-
-            <x-input-error
-                :messages="$errors->get('username')"
-                class="mt-2"
-            />
-
+            <x-input-error :messages="$errors->get('username')" class="mt-1.5 text-xs sm:text-sm font-bold text-rose-600" />
         </div>
 
         {{-- PASSWORD --}}
-        <div class="mt-4">
-
-            <x-input-label
-                for="password"
-                value="Password"
-            />
-
-            <x-text-input
+        <div>
+            <label for="password" class="block text-xs sm:text-sm font-extrabold text-slate-700 mb-1.5">
+                Password
+            </label>
+            <input
                 id="password"
-                class="mt-1 block w-full"
                 type="password"
                 name="password"
                 required
                 autocomplete="current-password"
+                placeholder="••••••••"
+                class="w-full rounded-xl border border-[#d1d5db] bg-white px-4 py-3 text-sm sm:text-base font-semibold text-slate-900 placeholder-slate-400 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 transition shadow-xs"
             />
-
-            <x-input-error
-                :messages="$errors->get('password')"
-                class="mt-2"
-            />
-
+            <x-input-error :messages="$errors->get('password')" class="mt-1.5 text-xs sm:text-sm font-bold text-rose-600" />
         </div>
 
-        {{-- REMEMBER --}}
-        <div class="mt-4 block">
-
-            <label
-                for="remember_me"
-                class="inline-flex items-center"
-            >
-
+        {{-- REMEMBER ME --}}
+        <div class="flex items-center justify-between pt-1">
+            <label for="remember_me" class="inline-flex items-center cursor-pointer">
                 <input
                     id="remember_me"
                     type="checkbox"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
                     name="remember"
+                    class="rounded border-[#d1d5db] text-slate-900 focus:ring-0 h-4.5 w-4.5"
                 >
-
-                <span class="ms-2 text-sm text-gray-600">
+                <span class="ms-2.5 text-xs sm:text-sm text-slate-600 font-bold">
                     Ingat saya
                 </span>
-
             </label>
-
         </div>
 
-        <div class="mt-6">
-
-            <x-primary-button
-                class="w-full justify-center"
+        {{-- SUBMIT BUTTON --}}
+        <div class="pt-2">
+            <button
+                type="submit"
+                class="w-full rounded-xl bg-slate-900 hover:bg-black py-3 px-5 text-sm sm:text-base font-extrabold text-white shadow-md focus:outline-none transition active:scale-[0.99]"
             >
                 Masuk
-            </x-primary-button>
-
+            </button>
         </div>
-
     </form>
-
 </x-guest-layout>
