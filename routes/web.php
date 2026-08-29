@@ -9,11 +9,6 @@ use App\Http\Controllers\Hrd\HrdLeaveRequestController;
 use App\Http\Controllers\Hrd\HrdEmployeeController;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| ROOT
-|--------------------------------------------------------------------------
-*/
 Route::get('/', function () {
 
     if (! auth()->check()) {
@@ -23,9 +18,6 @@ Route::get('/', function () {
 
     $user = auth()->user();
 
-    /*
-     * HRD / Admin masuk ke Dashboard HRD.
-     */
     if (
         in_array(
             $user->role,
@@ -41,19 +33,10 @@ Route::get('/', function () {
             ->route('hrd.dashboard');
     }
 
-    /*
-     * Karyawan masuk ke Dashboard Employee.
-     */
     return redirect()
         ->route('dashboard');
 });
 
-
-/*
-|--------------------------------------------------------------------------
-| FIRST PASSWORD CHANGE
-|--------------------------------------------------------------------------
-*/
 Route::middleware('auth')->group(function () {
 
     Route::get(
@@ -67,12 +50,6 @@ Route::middleware('auth')->group(function () {
     )->name('password.first.update');
 });
 
-
-/*
-|--------------------------------------------------------------------------
-| EMPLOYEE PORTAL
-|--------------------------------------------------------------------------
-*/
 Route::middleware('auth')->group(function () {
 
     Route::get(
@@ -106,12 +83,6 @@ Route::middleware('auth')->group(function () {
     )->name('leave-requests.cancel');
 });
 
-
-/*
-|--------------------------------------------------------------------------
-| HRD
-|--------------------------------------------------------------------------
-*/
 Route::middleware([
     'auth',
     'hrd',
@@ -120,22 +91,11 @@ Route::middleware([
     ->name('hrd.')
     ->group(function () {
 
-        /*
-        |--------------------------------------------------------------------------
-        | DASHBOARD
-        |--------------------------------------------------------------------------
-        */
         Route::get(
             '/dashboard',
             [HrdDashboardController::class, 'index']
         )->name('dashboard');
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | PENGAJUAN
-        |--------------------------------------------------------------------------
-        */
         Route::get(
             '/pengajuan',
             [HrdLeaveRequestController::class, 'index']
@@ -156,12 +116,6 @@ Route::middleware([
             [HrdLeaveRequestController::class, 'reject']
         )->name('leave-requests.reject');
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | KARYAWAN
-        |--------------------------------------------------------------------------
-        */
         Route::get(
             '/karyawan',
             [HrdEmployeeController::class, 'index']
@@ -173,12 +127,6 @@ Route::middleware([
         )->name('employees.reset-password');
     });
 
-
-/*
-|--------------------------------------------------------------------------
-| PROFILE
-|--------------------------------------------------------------------------
-*/
 Route::middleware('auth')->group(function () {
 
     Route::get(
@@ -197,10 +145,4 @@ Route::middleware('auth')->group(function () {
     )->name('profile.destroy');
 });
 
-
-/*
-|--------------------------------------------------------------------------
-| AUTH
-|--------------------------------------------------------------------------
-*/
 require __DIR__.'/auth.php';
