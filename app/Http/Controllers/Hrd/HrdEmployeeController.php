@@ -200,11 +200,6 @@ class HrdEmployeeController extends Controller
                 $temporaryPassword,
         ];
 
-        /*
-        |--------------------------------------------------------------------------
-        | AJAX
-        |--------------------------------------------------------------------------
-        */
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -217,11 +212,6 @@ class HrdEmployeeController extends Controller
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | FALLBACK NON-AJAX
-        |--------------------------------------------------------------------------
-        */
         return redirect()
             ->route(
                 'hrd.employees.index',

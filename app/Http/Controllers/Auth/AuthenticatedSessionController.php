@@ -11,43 +11,18 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Tampilkan halaman login.
-     */
     public function create(): View
     {
         return view('auth.login');
     }
 
-    /**
-     * Proses login.
-     */
     public function store(LoginRequest $request): RedirectResponse
     {
-        /*
-        |--------------------------------------------------------------------------
-        | AUTHENTICATE
-        |--------------------------------------------------------------------------
-        */
         $request->authenticate();
 
-        /*
-         * Regenerate session setelah login.
-         */
         $request->session()->regenerate();
 
         $user = $request->user();
-
-        /*
-        |--------------------------------------------------------------------------
-        | REDIRECT BERDASARKAN ROLE
-        |--------------------------------------------------------------------------
-        |
-        | Jangan gunakan redirect()->intended()
-        | karena bisa membawa HRD ke halaman employee
-        | berdasarkan URL yang tersimpan sebelumnya.
-        |
-        */
 
         if (
             in_array(
@@ -64,16 +39,10 @@ class AuthenticatedSessionController extends Controller
                 ->route('hrd.dashboard');
         }
 
-        /*
-         * Karyawan biasa.
-         */
         return redirect()
             ->route('dashboard');
     }
 
-    /**
-     * Logout.
-     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();

@@ -11,20 +11,6 @@ use Illuminate\Validation\ValidationException;
 
 class FaceLogLeaveRequestController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | LIST / SYNC
-    |--------------------------------------------------------------------------
-    |
-    | FaceLog lokal akan memanggil endpoint ini secara berkala.
-    |
-    | GET:
-    | /api/facelog/leave-requests
-    |
-    | Optional:
-    | ?updated_after=2026-08-28T10:00:00
-    |
-    */
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -103,11 +89,6 @@ class FaceLogLeaveRequestController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | DETAIL
-    |--------------------------------------------------------------------------
-    */
     public function show(
         string $uuid
     ): JsonResponse {
@@ -126,20 +107,12 @@ class FaceLogLeaveRequestController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | APPROVE DARI FACELOG LOKAL
-    |--------------------------------------------------------------------------
-    */
     public function approve(
         Request $request,
         string $uuid
     ): JsonResponse {
         $validated = $request->validate([
-            /*
-             * Identitas approver dari sistem FaceLog.
-             * Tidak kita FK-kan ke users Portal.
-             */
+
             'approved_by_name' => [
                 'required',
                 'string',
@@ -160,11 +133,6 @@ class FaceLogLeaveRequestController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                /*
-                 * Idempotent:
-                 * Kalau sudah approved,
-                 * request ulang tetap aman.
-                 */
                 if (
                     $item->status
                     === 'approved'
@@ -188,10 +156,6 @@ class FaceLogLeaveRequestController extends Controller
                     'status' =>
                         'approved',
 
-                    /*
-                     * approved_by Portal tidak kita isi
-                     * karena approver berasal dari FaceLog.
-                     */
                     'approved_by' =>
                         null,
 
@@ -214,11 +178,6 @@ class FaceLogLeaveRequestController extends Controller
                         now(),
                 ]);
 
-                /*
-                 * Nama approver FaceLog nanti kita simpan
-                 * dalam kolom khusus. Kita tambahkan
-                 * migration setelah ini.
-                 */
                 $item->update([
                     'external_approved_by_name' =>
                         $validated['approved_by_name'],
@@ -245,11 +204,6 @@ class FaceLogLeaveRequestController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | REJECT DARI FACELOG LOKAL
-    |--------------------------------------------------------------------------
-    */
     public function reject(
         Request $request,
         string $uuid
@@ -354,14 +308,6 @@ class FaceLogLeaveRequestController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | TRANSFORM
-    |--------------------------------------------------------------------------
-    |
-    | Format yang diterima FaceLog dibuat konsisten.
-    |
-    */
     protected function transform(
         LeaveRequest $item
     ): array {
@@ -371,9 +317,6 @@ class FaceLogLeaveRequestController extends Controller
             'uuid' =>
                 $item->uuid,
 
-            /*
-             * ID utama penghubung ke FaceLog.
-             */
             'source_karyawan_id' =>
                 $employee?->source_karyawan_id,
 
@@ -383,10 +326,6 @@ class FaceLogLeaveRequestController extends Controller
             'nama' =>
                 $employee?->nama,
 
-            /*
-             * Hanya reference.
-             * BUKAN identity utama.
-             */
             'pin_fingerspot' =>
                 $employee?->pin_fingerspot,
 

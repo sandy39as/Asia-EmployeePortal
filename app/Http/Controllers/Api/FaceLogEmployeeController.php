@@ -93,16 +93,6 @@ class FaceLogEmployeeController extends Controller
                         $sourceId =
                             (int) $row['id'];
 
-                        /*
-                        |--------------------------------------------------------------------------
-                        | IDENTITAS UTAMA
-                        |--------------------------------------------------------------------------
-                        |
-                        | Jangan menggunakan PIN Fingerspot sebagai identity.
-                        | Gunakan source_karyawan_id dari FaceLog.
-                        |
-                        */
-
                         $employee =
                             Employee::query()
                                 ->where(
@@ -159,13 +149,6 @@ class FaceLogEmployeeController extends Controller
                             'last_synced_at' =>
                                 now(),
                         ];
-
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | KARYAWAN BARU
-                        |--------------------------------------------------------------------------
-                        */
 
                         if (! $employee) {
 
@@ -244,22 +227,10 @@ class FaceLogEmployeeController extends Controller
                             return;
                         }
 
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | UPDATE DATA EXISTING
-                        |--------------------------------------------------------------------------
-                        */
-
                         $employee->update(
                             $employeeData
                         );
 
-
-                        /*
-                         * Sinkronkan juga akun portal.
-                         * Password tidak disentuh.
-                         */
                         if ($employee->user) {
 
                             $employee->user->update([

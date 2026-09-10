@@ -9,17 +9,11 @@ use Illuminate\View\View;
 
 class FirstPasswordController extends Controller
 {
-    /**
-     * Tampilkan form pembuatan password pertama.
-     */
     public function edit(): View
     {
         return view('auth.first-password');
     }
 
-    /**
-     * Simpan password baru.
-     */
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate(
@@ -45,11 +39,6 @@ class FirstPasswordController extends Controller
 
         $user = $request->user();
 
-        /*
-        |--------------------------------------------------------------------------
-        | UPDATE PASSWORD
-        |--------------------------------------------------------------------------
-        */
         $user->update([
             'password' =>
                 Hash::make(
@@ -60,17 +49,8 @@ class FirstPasswordController extends Controller
                 false,
         ]);
 
-        /*
-         * Regenerate session ID setelah
-         * password berhasil diganti.
-         */
         $request->session()->regenerate();
 
-        /*
-        |--------------------------------------------------------------------------
-        | REDIRECT BERDASARKAN ROLE
-        |--------------------------------------------------------------------------
-        */
         if (
             in_array(
                 $user->role,
@@ -90,9 +70,6 @@ class FirstPasswordController extends Controller
                 );
         }
 
-        /*
-         * Karyawan biasa.
-         */
         return redirect()
             ->route('dashboard')
             ->with(

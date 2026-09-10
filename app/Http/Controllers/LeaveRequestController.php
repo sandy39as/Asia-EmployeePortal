@@ -14,11 +14,6 @@ use Illuminate\View\View;
 
 class LeaveRequestController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | INDEX
-    |--------------------------------------------------------------------------
-    */
     public function index(Request $request): View
     {
         $employee =
@@ -79,16 +74,6 @@ class LeaveRequestController extends Controller
         );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | CREATE - FALLBACK
-    |--------------------------------------------------------------------------
-    |
-    | Route ini tetap dipertahankan jika URL dibuka langsung.
-    | Dalam UI normal kita pakai modal.
-    |
-    */
     public function create(
         Request $request
     ): View {
@@ -106,12 +91,6 @@ class LeaveRequestController extends Controller
         );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | STORE
-    |--------------------------------------------------------------------------
-    */
     public function store(
         Request $request
     ): RedirectResponse|JsonResponse {
@@ -148,12 +127,6 @@ class LeaveRequestController extends Controller
                 );
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | VALIDATION
-        |--------------------------------------------------------------------------
-        */
         $validated =
             $request->validate(
                 [
@@ -237,12 +210,6 @@ class LeaveRequestController extends Controller
                 ]
             );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | DURASI PER JAM
-        |--------------------------------------------------------------------------
-        */
         if (
             $validated['durasi_type']
             === 'hourly'
@@ -313,12 +280,6 @@ class LeaveRequestController extends Controller
                 null;
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | LAMPIRAN
-        |--------------------------------------------------------------------------
-        */
         $lampiranPath =
             null;
 
@@ -345,12 +306,6 @@ class LeaveRequestController extends Controller
                 );
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CREATE
-        |--------------------------------------------------------------------------
-        */
         try {
 
             $leaveRequest =
@@ -396,10 +351,6 @@ class LeaveRequestController extends Controller
 
         } catch (\Throwable $e) {
 
-            /*
-             * Kalau database gagal setelah file terupload,
-             * hapus file supaya tidak menjadi orphan.
-             */
             if ($lampiranPath) {
                 Storage::disk('public')
                     ->delete(
@@ -410,12 +361,6 @@ class LeaveRequestController extends Controller
             throw $e;
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | AJAX
-        |--------------------------------------------------------------------------
-        */
         if ($request->expectsJson()) {
 
             return response()->json([
@@ -438,12 +383,6 @@ class LeaveRequestController extends Controller
             ]);
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | FALLBACK
-        |--------------------------------------------------------------------------
-        */
         return redirect()
             ->route(
                 'leave-requests.index'
@@ -454,12 +393,6 @@ class LeaveRequestController extends Controller
             );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | SHOW - FALLBACK
-    |--------------------------------------------------------------------------
-    */
     public function show(
         Request $request,
         LeaveRequest $leaveRequest
@@ -484,12 +417,6 @@ class LeaveRequestController extends Controller
         );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | CANCEL
-    |--------------------------------------------------------------------------
-    */
     public function cancel(
         Request $request,
         LeaveRequest $leaveRequest

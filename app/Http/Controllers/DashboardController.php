@@ -13,10 +13,6 @@ class DashboardController extends Controller
 
         $employee = $user->employee;
 
-        /*
-         * Kalau akun HRD/admin tidak terhubung employee,
-         * tetap jangan error.
-         */
         if (! $employee) {
             return view('dashboard', [
                 'employee' => null,

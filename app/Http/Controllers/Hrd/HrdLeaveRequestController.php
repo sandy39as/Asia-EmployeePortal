@@ -74,9 +74,6 @@ class HrdLeaveRequestController extends Controller
                 )
             )
 
-            /*
-             * Pending paling atas.
-             */
             ->orderByRaw("
                 CASE
                     WHEN status = 'pending' THEN 1
@@ -119,11 +116,6 @@ class HrdLeaveRequestController extends Controller
         );
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | APPROVE
-    |--------------------------------------------------------------------------
-    */
     public function approve(
         Request $request,
         LeaveRequest $leaveRequest
@@ -132,10 +124,6 @@ class HrdLeaveRequestController extends Controller
             $request,
             $leaveRequest
         ) {
-            /*
-             * Lock supaya tidak bisa diputuskan bersamaan
-             * oleh dua request.
-             */
             $item = LeaveRequest::query()
                 ->whereKey($leaveRequest->id)
                 ->lockForUpdate()
@@ -157,9 +145,6 @@ class HrdLeaveRequestController extends Controller
                 'approved_at' =>
                     now(),
 
-                /*
-                 * Bersihkan reject apabila ada data lama.
-                 */
                 'rejected_by' =>
                     null,
 
@@ -169,9 +154,6 @@ class HrdLeaveRequestController extends Controller
                 'rejection_reason' =>
                     null,
 
-                /*
-                 * Nanti FaceLog akan membaca ini.
-                 */
                 'local_sync_status' =>
                     'pending',
             ]);
@@ -188,11 +170,6 @@ class HrdLeaveRequestController extends Controller
             );
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | REJECT
-    |--------------------------------------------------------------------------
-    */
     public function reject(
         Request $request,
         LeaveRequest $leaveRequest

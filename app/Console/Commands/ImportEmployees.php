@@ -22,11 +22,6 @@ class ImportEmployees extends Command
     {
         $file = $this->argument('file');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Resolve Path
-        |--------------------------------------------------------------------------
-        */
         if (! file_exists($file)) {
             $storagePath = storage_path('app/' . ltrim($file, '/\\'));
 
@@ -43,11 +38,6 @@ class ImportEmployees extends Command
             return self::FAILURE;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Open CSV
-        |--------------------------------------------------------------------------
-        */
         $handle = fopen($file, 'r');
 
         if (! $handle) {
@@ -56,11 +46,6 @@ class ImportEmployees extends Command
             return self::FAILURE;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Header
-        |--------------------------------------------------------------------------
-        */
         $headers = fgetcsv($handle);
 
         if (! $headers) {
@@ -71,9 +56,6 @@ class ImportEmployees extends Command
             return self::FAILURE;
         }
 
-        /*
-         * Bersihkan BOM dan spasi.
-         */
         $headers = array_map(function ($header) {
             return trim(
                 preg_replace(
@@ -108,14 +90,6 @@ class ImportEmployees extends Command
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Credential Output
-        |--------------------------------------------------------------------------
-        |
-        | Hanya akun BARU yang dimasukkan ke file ini.
-        |
-        */
         $credentialDir =
             storage_path('app/private/credentials');
 
@@ -149,22 +123,12 @@ class ImportEmployees extends Command
             ]
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Statistics
-        |--------------------------------------------------------------------------
-        */
         $total = 0;
         $created = 0;
         $updated = 0;
         $accountsCreated = 0;
         $skipped = 0;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Import
-        |--------------------------------------------------------------------------
-        */
         DB::beginTransaction();
 
         try {
@@ -213,11 +177,6 @@ class ImportEmployees extends Command
                     continue;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Status Active
-                |--------------------------------------------------------------------------
-                */
                 $isActive =
                     in_array(
                         strtolower(
@@ -245,16 +204,6 @@ class ImportEmployees extends Command
                     continue;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Employee Code
-                |--------------------------------------------------------------------------
-                |
-                | FaceLog ID 1   => A0001
-                | FaceLog ID 72  => A0072
-                | FaceLog ID 403 => A0403
-                |
-                */
                 $employeeCode =
                     'A'
                     . str_pad(
@@ -264,11 +213,6 @@ class ImportEmployees extends Command
                         STR_PAD_LEFT
                     );
 
-                /*
-                |--------------------------------------------------------------------------
-                | Employee
-                |--------------------------------------------------------------------------
-                */
                 $employee =
                     Employee::where(
                         'source_karyawan_id',
@@ -340,14 +284,6 @@ class ImportEmployees extends Command
                     $created++;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | User Account
-                |--------------------------------------------------------------------------
-                |
-                | Akun existing TIDAK direset password-nya.
-                |
-                */
                 $user = User::where(
                     'employee_id',
                     $employee->id
@@ -371,11 +307,6 @@ class ImportEmployees extends Command
                     continue;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Password awal random 6 digit
-                |--------------------------------------------------------------------------
-                */
                 $temporaryPassword =
                     (string) random_int(
                         100000,
@@ -410,10 +341,6 @@ class ImportEmployees extends Command
                         $isActive,
                 ]);
 
-                /*
-                 * Credential plaintext hanya ditulis
-                 * ke file output satu kali.
-                 */
                 fputcsv(
                     $credentialHandle,
                     [
@@ -447,11 +374,6 @@ class ImportEmployees extends Command
         fclose($handle);
         fclose($credentialHandle);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Result
-        |--------------------------------------------------------------------------
-        */
         $this->newLine();
 
         $this->info(
@@ -505,10 +427,6 @@ class ImportEmployees extends Command
                 . 'Password plaintext tidak disimpan di database.'
             );
         } else {
-            /*
-             * Kalau tidak membuat akun baru,
-             * hapus file credential kosong.
-             */
             if (file_exists($credentialFile)) {
                 unlink($credentialFile);
             }
