@@ -122,12 +122,20 @@
                 </div>
 
                 <div class="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-50 min-h-[300px]">
+                    @php
+                        $lampiranUrl = asset('uploads/' . ltrim($item->lampiran_path, '/'));
+                    @endphp
+
                     @if ($isPdf)
-                        <iframe src="{{ \Illuminate\Support\Facades\Storage::url($item->lampiran_path) }}" class="w-full h-[70vh] rounded-xl border border-slate-200"></iframe>
+                        <iframe
+                            src="{{ $lampiranUrl }}"
+                            class="w-full h-[70vh] rounded-xl border border-slate-200">
+                        </iframe>
                     @else
-                        <img src="{{ \Illuminate\Support\Facades\Storage::url($item->lampiran_path) }}" 
-                             alt="Lampiran" 
-                             class="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm border border-slate-200">
+                        <img
+                            src="{{ $lampiranUrl }}"
+                            alt="Lampiran"
+                            class="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm border border-slate-200">
                     @endif
                 </div>
             </div>
