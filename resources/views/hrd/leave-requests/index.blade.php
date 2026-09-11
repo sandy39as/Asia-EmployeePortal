@@ -203,7 +203,7 @@
             </div>
         </div>
 
-        {{-- MODAL KHUSUS PREVIEW GAMBAR / DOKUMEN (POP-UP DALAM HALAMAN DENGAN TOMBOL X) --}}
+        {{-- MODAL KHUSUS PREVIEW GAMBAR / DOKUMEN --}}
         @if ($item->lampiran_path)
             <div id="{{ $imgModalId }}" class="fixed inset-0 z-[120] hidden items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6">
                 <div id="{{ $imgModalBoxId }}" class="relative max-h-[92vh] w-full max-w-3xl scale-95 overflow-hidden rounded-3xl bg-white opacity-0 shadow-2xl transition-all duration-200 flex flex-col">
@@ -218,18 +218,58 @@
 
                     {{-- CONTENT GAMBAR / PDF --}}
                     <div class="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-50 min-h-[300px]">
+                        @php
+                            $lampiranPath = ltrim((string) $item->lampiran_path, '/');
+                        
+                            if (str_starts_with($lampiranPath, 'storage/')) {
+                                $lampiranPath = substr($lampiranPath, strlen('storage/'));
+                            }
+                        
+                            if (str_starts_with($lampiranPath, 'uploads/')) {
+                                $lampiranPath = substr($lampiranPath, strlen('uploads/'));
+                            }
+                        
+                            $lampiranUrl = asset('uploads/' . $lampiranPath);
+                        @endphp
+                        
                         @if ($isPdf)
-                            <iframe src="{{ \Illuminate\Support\Facades\Storage::url($item->lampiran_path) }}" class="w-full h-[70vh] rounded-xl border border-slate-200"></iframe>
+                            <iframe
+                                src="{{ $lampiranUrl }}"
+                                class="w-full h-[70vh] rounded-xl border border-slate-200">
+                            </iframe>
                         @else
-                            <img src="{{ \Illuminate\Support\Facades\Storage::url($item->lampiran_path) }}" 
-                                 alt="Lampiran" 
-                                 class="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm border border-slate-200">
+                            <img
+                                src="{{ $lampiranUrl }}"
+                                alt="Lampiran"
+                                class="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm border border-slate-200">
                         @endif
                     </div>
                 </div>
             </div>
         @endif
     @endforeach
+
+    {{-- MODAL KONFIRMASI CUSTOM --}}
+    <div id="confirmActionModal" class="fixed inset-0 z-[150] hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
+        <div id="confirmActionBox" class="w-full max-w-sm scale-95 overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 opacity-0 shadow-2xl transition-all duration-200">
+            <div class="flex flex-col items-center text-center">
+                <div id="confirmIconContainer" class="flex h-12 w-12 items-center justify-center rounded-2xl">
+                    {{-- Ikon dimasukkan via JS --}}
+                </div>
+                <h4 id="confirmModalTitle" class="mt-4 text-base font-extrabold text-slate-900">Konfirmasi Tindakan</h4>
+                <p id="confirmModalMessage" class="mt-1.5 text-xs sm:text-sm font-medium text-slate-600 leading-relaxed"></p>
+            </div>
+
+            <div class="mt-6 flex items-center gap-2.5">
+                <button type="button" id="cancelConfirmBtn" class="w-1/2 rounded-xl border border-slate-200 bg-white py-2.5 text-xs sm:text-sm font-extrabold text-slate-700 transition hover:bg-slate-50 focus:outline-none">
+                    Batal
+                </button>
+                <button type="button" id="acceptConfirmBtn" class="w-1/2 rounded-xl py-2.5 text-xs sm:text-sm font-extrabold text-white transition shadow-xs focus:outline-none">
+                    Ya, Lanjutkan
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -254,6 +294,64 @@
                     const anyOpen = document.querySelector('.fixed.inset-0.flex');
                     if (!anyOpen) document.body.classList.remove('overflow-hidden');
                 }, 180);
+            }
+
+            // Fungsi Dialog Konfirmasi Custom
+            function showConfirmDialog({ title, message, type }) {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('confirmActionModal');
+                    const box = document.getElementById('confirmActionBox');
+                    const titleEl = document.getElementById('confirmModalTitle');
+                    const msgEl = document.getElementById('confirmModalMessage');
+                    const iconBox = document.getElementById('confirmIconContainer');
+                    const acceptBtn = document.getElementById('acceptConfirmBtn');
+                    const cancelBtn = document.getElementById('cancelConfirmBtn');
+
+                    titleEl.textContent = title;
+                    msgEl.textContent = message;
+
+                    if (type === 'approve') {
+                        iconBox.className = 'flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600';
+                        iconBox.innerHTML = `
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        `;
+                        acceptBtn.className = 'w-1/2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 text-xs sm:text-sm font-extrabold text-white transition shadow-xs focus:outline-none';
+                        acceptBtn.textContent = 'Ya, Setujui';
+                    } else {
+                        iconBox.className = 'flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600';
+                        iconBox.innerHTML = `
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        `;
+                        acceptBtn.className = 'w-1/2 rounded-xl bg-rose-600 hover:bg-rose-700 py-2.5 text-xs sm:text-sm font-extrabold text-white transition shadow-xs focus:outline-none';
+                        acceptBtn.textContent = 'Ya, Tolak';
+                    }
+
+                    openGenericModal('confirmActionModal', 'confirmActionBox');
+
+                    function handleAccept() {
+                        cleanup();
+                        closeGenericModal('confirmActionModal', 'confirmActionBox');
+                        resolve(true);
+                    }
+
+                    function handleCancel() {
+                        cleanup();
+                        closeGenericModal('confirmActionModal', 'confirmActionBox');
+                        resolve(false);
+                    }
+
+                    function cleanup() {
+                        acceptBtn.removeEventListener('click', handleAccept);
+                        cancelBtn.removeEventListener('click', handleCancel);
+                    }
+
+                    acceptBtn.addEventListener('click', handleAccept);
+                    cancelBtn.addEventListener('click', handleCancel);
+                });
             }
 
             document.addEventListener('click', function (e) {
@@ -293,7 +391,16 @@
                     }
                 }
 
-                if (!confirm(type === 'approve' ? 'Setujui pengajuan ini?' : 'Tolak pengajuan ini?')) return;
+                // Menggunakan Custom Modal Confirmation
+                const confirmed = await showConfirmDialog({
+                    title: type === 'approve' ? 'Setujui Pengajuan?' : 'Tolak Pengajuan?',
+                    message: type === 'approve' 
+                        ? 'Pengajuan ini akan disetujui dan status cuti/izin karyawan akan diperbarui.' 
+                        : 'Pengajuan ini akan ditolak sesuai dengan alasan yang telah dimasukkan.',
+                    type: type
+                });
+
+                if (!confirmed) return;
 
                 errorBox?.classList.add('hidden');
                 const originalText = submitBtn.innerHTML;
