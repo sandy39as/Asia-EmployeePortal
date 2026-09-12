@@ -124,22 +124,47 @@
 
             @if ($isPortalMasterAdmin)
 
-                <div class="mt-6 px-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">
+                <div class="mt-6 mb-2 px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Master Data
                 </div>
 
-                <a
-                    href="{{ route('master.kabag.index') }}"
-                    class="..."
-                >
-                    Kabag
+                {{-- DATA KABAG --}}
+                <a href="{{ route('master.kabag.index') }}"
+                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition {{ $navClass('master.kabag.*') }}">
+
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="h-4 w-4 shrink-0 text-slate-500"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.8">
+
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0" />
+                    </svg>
+
+                    <span>Data Kabag</span>
                 </a>
 
-                <a
-                    href="{{ route('master.kabag-mapping.index') }}"
-                    class="..."
-                >
-                    Mapping Kabag
+
+                {{-- MAPPING KABAG --}}
+                <a href="{{ route('master.kabag-mapping.index') }}"
+                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs transition {{ $navClass('master.kabag-mapping.*') }}">
+
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="h-4 w-4 shrink-0 text-slate-500"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.8">
+
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                    </svg>
+
+                    <span>Mapping Kabag</span>
                 </a>
 
             @endif
