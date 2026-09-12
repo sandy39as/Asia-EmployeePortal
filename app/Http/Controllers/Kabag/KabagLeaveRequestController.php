@@ -111,6 +111,15 @@ class KabagLeaveRequestController extends Controller
 
                 'kabag_rejection_reason' =>
                     null,
+
+                'hrd_status' =>
+                    'pending',
+
+                'status' =>
+                    'pending',
+
+                'local_sync_status' =>
+                    'pending',
             ]);
         });
 

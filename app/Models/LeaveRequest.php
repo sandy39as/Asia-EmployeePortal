@@ -39,6 +39,13 @@ class LeaveRequest extends Model
         'kabag_rejected_by',
         'kabag_rejected_at',
         'kabag_rejection_reason',
+        'hrd_status',
+        'hrd_approved_by',
+        'hrd_approved_at',
+        'hrd_rejected_by',
+        'hrd_rejected_at',
+        'hrd_rejection_reason',
+        'hrd_action_source',
     ];
 
     protected function casts(): array
@@ -51,6 +58,8 @@ class LeaveRequest extends Model
             'local_synced_at' => 'datetime',
             'kabag_approved_at' => 'datetime',
             'kabag_rejected_at' => 'datetime',
+            'hrd_approved_at' => 'datetime',
+            'hrd_rejected_at' => 'datetime',
         ];
     }
 
@@ -117,6 +126,22 @@ class LeaveRequest extends Model
         return $this->belongsTo(
             \App\Models\User::class,
             'kabag_rejected_by'
+        );
+    }
+
+    public function hrdApprovedBy()
+    {
+        return $this->belongsTo(
+            \App\Models\User::class,
+            'hrd_approved_by'
+        );
+    }
+
+    public function hrdRejectedBy()
+    {
+        return $this->belongsTo(
+            \App\Models\User::class,
+            'hrd_rejected_by'
         );
     }
 
