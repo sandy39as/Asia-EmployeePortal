@@ -14,11 +14,6 @@ use Illuminate\View\View;
 
 class LeaveRequestController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | INDEX
-    |--------------------------------------------------------------------------
-    */
     public function index(Request $request): View
     {
         $employee = $request->user()->employee;
@@ -44,11 +39,6 @@ class LeaveRequestController extends Controller
 
         $items = LeaveRequest::query()
 
-            /*
-            |--------------------------------------------------------------------------
-            | Relasi untuk progress Kabag -> HRD
-            |--------------------------------------------------------------------------
-            */
             ->with([
                 'kabag',
                 'kabagApprovedBy',
@@ -57,7 +47,6 @@ class LeaveRequestController extends Controller
                 'hrdApprovedBy',
                 'hrdRejectedBy',
 
-                // Relasi lama tetap diload untuk compatibility
                 'approvedBy',
                 'rejectedBy',
             ])
@@ -100,12 +89,6 @@ class LeaveRequestController extends Controller
         );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | CREATE
-    |--------------------------------------------------------------------------
-    */
     public function create(
         Request $request
     ): View {
@@ -122,12 +105,6 @@ class LeaveRequestController extends Controller
         );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | STORE
-    |--------------------------------------------------------------------------
-    */
     public function store(
         Request $request
     ): RedirectResponse|JsonResponse {
@@ -139,12 +116,6 @@ class LeaveRequestController extends Controller
             403
         );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Employee harus aktif
-        |--------------------------------------------------------------------------
-        */
         if (! $employee->is_active) {
 
             if ($request->expectsJson()) {
@@ -168,15 +139,6 @@ class LeaveRequestController extends Controller
                 );
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Cari Kabag dari mapping
-        |--------------------------------------------------------------------------
-        |
-        | Satu employee saat ini hanya boleh memiliki satu Kabag aktif.
-        |
-        */
         $kabag = $employee
             ->kabag()
             ->where(
@@ -185,12 +147,6 @@ class LeaveRequestController extends Controller
             )
             ->first();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Jangan izinkan submit kalau belum punya Kabag
-        |--------------------------------------------------------------------------
-        */
         if (! $kabag) {
 
             $message =
@@ -218,12 +174,6 @@ class LeaveRequestController extends Controller
                 );
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Validation
-        |--------------------------------------------------------------------------
-        */
         $validated =
             $request->validate(
                 [
@@ -307,12 +257,6 @@ class LeaveRequestController extends Controller
                 ]
             );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Validation durasi jam
-        |--------------------------------------------------------------------------
-        */
         if (
             $validated['durasi_type']
             === 'hourly'
@@ -380,12 +324,6 @@ class LeaveRequestController extends Controller
             $validated['jam_selesai'] = null;
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Lampiran
-        |--------------------------------------------------------------------------
-        */
         $lampiranPath = null;
         $lampiranOriginalName = null;
 
@@ -408,12 +346,6 @@ class LeaveRequestController extends Controller
                 );
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create Leave Request
-        |--------------------------------------------------------------------------
-        */
         try {
 
             $leaveRequest =
@@ -425,19 +357,9 @@ class LeaveRequestController extends Controller
                     'employee_id' =>
                         $employee->id,
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Kabag tujuan
-                    |--------------------------------------------------------------------------
-                    */
                     'kabag_user_id' =>
                         $kabag->id,
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Data Pengajuan
-                    |--------------------------------------------------------------------------
-                    */
                     'jenis' =>
                         $validated['jenis'],
 
@@ -467,19 +389,6 @@ class LeaveRequestController extends Controller
                     'lampiran_original_name' =>
                         $lampiranOriginalName,
 
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Workflow Approval
-                    |--------------------------------------------------------------------------
-                    |
-                    | Baru submit:
-                    |
-                    | Kabag = pending
-                    | HRD   = waiting
-                    | Final = pending
-                    |
-                    */
                     'kabag_status' =>
                         'pending',
 
@@ -489,25 +398,12 @@ class LeaveRequestController extends Controller
                     'status' =>
                         'pending',
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Belum perlu sync ke FaceLog
-                    |--------------------------------------------------------------------------
-                    |
-                    | FaceLog baru perlu memproses setelah Kabag approve.
-                    |
-                    */
                     'local_sync_status' =>
                         'pending',
                 ]);
 
         } catch (\Throwable $e) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | Hapus lampiran jika insert DB gagal
-            |--------------------------------------------------------------------------
-            */
             if ($lampiranPath) {
 
                 Storage::disk('public')
@@ -519,12 +415,6 @@ class LeaveRequestController extends Controller
             throw $e;
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Response AJAX
-        |--------------------------------------------------------------------------
-        */
         if ($request->expectsJson()) {
 
             return response()->json([
@@ -562,12 +452,6 @@ class LeaveRequestController extends Controller
             ]);
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Normal Redirect
-        |--------------------------------------------------------------------------
-        */
         return redirect()
             ->route(
                 'leave-requests.index'
@@ -580,12 +464,6 @@ class LeaveRequestController extends Controller
             );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | SHOW
-    |--------------------------------------------------------------------------
-    */
     public function show(
         Request $request,
         LeaveRequest $leaveRequest
@@ -603,12 +481,6 @@ class LeaveRequestController extends Controller
             403
         );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Load seluruh approval history
-        |--------------------------------------------------------------------------
-        */
         $leaveRequest->load([
             'kabag',
             'kabagApprovedBy',
@@ -631,12 +503,6 @@ class LeaveRequestController extends Controller
         );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | CANCEL
-    |--------------------------------------------------------------------------
-    */
     public function cancel(
         Request $request,
         LeaveRequest $leaveRequest
@@ -654,12 +520,6 @@ class LeaveRequestController extends Controller
             403
         );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Hanya boleh batal sebelum Kabag memproses
-        |--------------------------------------------------------------------------
-        */
         if (
             $leaveRequest->status
                 !== 'pending'
@@ -700,19 +560,9 @@ class LeaveRequestController extends Controller
             'status' =>
                 'cancelled',
 
-            /*
-            |--------------------------------------------------------------------------
-            | HRD tidak perlu memproses
-            |--------------------------------------------------------------------------
-            */
             'hrd_status' =>
                 'waiting',
 
-            /*
-            |--------------------------------------------------------------------------
-            | Tandai agar perubahan bisa tersinkron jika diperlukan
-            |--------------------------------------------------------------------------
-            */
             'local_sync_status' =>
                 'pending',
         ]);

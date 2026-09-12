@@ -30,44 +30,22 @@ class HrdLeaveRequestController extends Controller
             ->with([
                 'employee',
 
-                // Approval Kabag
                 'kabag',
                 'kabagApprovedBy',
                 'kabagRejectedBy',
 
-                // Approval HRD baru
                 'hrdApprovedBy',
                 'hrdRejectedBy',
 
-                // Field/relationship lama tetap dipakai
-                // untuk compatibility.
                 'approvedBy',
                 'rejectedBy',
             ])
 
-            /*
-            |--------------------------------------------------------------------------
-            | HRD hanya melihat yang sudah ACC Kabag
-            |--------------------------------------------------------------------------
-            |
-            | Pending Kabag tidak boleh muncul untuk diproses HRD.
-            |
-            */
             ->where(
                 'kabag_status',
                 'approved'
             )
 
-            /*
-            |--------------------------------------------------------------------------
-            | Status HRD
-            |--------------------------------------------------------------------------
-            |
-            | waiting = belum dikirim ke HRD
-            | pending = sudah ACC Kabag, siap diproses HRD
-            | approved/rejected = selesai
-            |
-            */
             ->whereIn(
                 'hrd_status',
                 [
@@ -77,11 +55,6 @@ class HrdLeaveRequestController extends Controller
                 ]
             )
 
-            /*
-            |--------------------------------------------------------------------------
-            | Search Employee
-            |--------------------------------------------------------------------------
-            */
             ->when(
                 $search !== '',
                 function ($q) use ($search) {
@@ -106,11 +79,6 @@ class HrdLeaveRequestController extends Controller
                 }
             )
 
-            /*
-            |--------------------------------------------------------------------------
-            | Jenis
-            |--------------------------------------------------------------------------
-            */
             ->when(
                 in_array(
                     $jenis,
@@ -128,11 +96,6 @@ class HrdLeaveRequestController extends Controller
                     )
             )
 
-            /*
-            |--------------------------------------------------------------------------
-            | Filter Status
-            |--------------------------------------------------------------------------
-            */
             ->when(
                 $status === 'pending',
                 fn ($q) =>
@@ -169,11 +132,6 @@ class HrdLeaveRequestController extends Controller
                     )
             )
 
-            /*
-            |--------------------------------------------------------------------------
-            | Range Tanggal
-            |--------------------------------------------------------------------------
-            */
             ->when(
                 $startDate,
                 fn ($q) =>
@@ -194,11 +152,6 @@ class HrdLeaveRequestController extends Controller
                     )
             )
 
-            /*
-            |--------------------------------------------------------------------------
-            | Pending HRD paling atas
-            |--------------------------------------------------------------------------
-            */
             ->orderByRaw("
                 CASE
                     WHEN hrd_status = 'pending'
@@ -236,11 +189,7 @@ class HrdLeaveRequestController extends Controller
     public function show(
         LeaveRequest $leaveRequest
     ) {
-        /*
-        |--------------------------------------------------------------------------
-        | HRD hanya boleh review setelah ACC Kabag
-        |--------------------------------------------------------------------------
-        */
+
         abort_unless(
             $leaveRequest->kabag_status
                 === 'approved',
@@ -284,11 +233,6 @@ class HrdLeaveRequestController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            /*
-            |--------------------------------------------------------------------------
-            | Harus sudah ACC Kabag
-            |--------------------------------------------------------------------------
-            */
             if (
                 $item->kabag_status
                 !== 'approved'
@@ -299,11 +243,6 @@ class HrdLeaveRequestController extends Controller
                 );
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Harus masih pending HRD
-            |--------------------------------------------------------------------------
-            */
             if (
                 $item->hrd_status
                 !== 'pending'
@@ -322,19 +261,9 @@ class HrdLeaveRequestController extends Controller
 
             $item->update([
 
-                /*
-                |--------------------------------------------------------------------------
-                | STATUS FINAL
-                |--------------------------------------------------------------------------
-                */
                 'status' =>
                     'approved',
 
-                /*
-                |--------------------------------------------------------------------------
-                | HRD WORKFLOW BARU
-                |--------------------------------------------------------------------------
-                */
                 'hrd_status' =>
                     'approved',
 
@@ -356,14 +285,6 @@ class HrdLeaveRequestController extends Controller
                 'hrd_action_source' =>
                     'portal',
 
-                /*
-                |--------------------------------------------------------------------------
-                | FIELD LAMA
-                |--------------------------------------------------------------------------
-                |
-                | Tetap diisi agar API/FaceLog lama tetap kompatibel.
-                |
-                */
                 'approved_by' =>
                     $userId,
 
@@ -379,11 +300,6 @@ class HrdLeaveRequestController extends Controller
                 'rejection_reason' =>
                     null,
 
-                /*
-                |--------------------------------------------------------------------------
-                | Trigger Sync FaceLog
-                |--------------------------------------------------------------------------
-                */
                 'local_sync_status' =>
                     'pending',
             ]);
@@ -432,12 +348,6 @@ class HrdLeaveRequestController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Harus sudah ACC Kabag
-            |--------------------------------------------------------------------------
-            */
             if (
                 $item->kabag_status
                 !== 'approved'
@@ -448,12 +358,6 @@ class HrdLeaveRequestController extends Controller
                 );
             }
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Harus masih pending HRD
-            |--------------------------------------------------------------------------
-            */
             if (
                 $item->hrd_status
                 !== 'pending'
@@ -474,19 +378,9 @@ class HrdLeaveRequestController extends Controller
 
             $item->update([
 
-                /*
-                |--------------------------------------------------------------------------
-                | STATUS FINAL
-                |--------------------------------------------------------------------------
-                */
                 'status' =>
                     'rejected',
 
-                /*
-                |--------------------------------------------------------------------------
-                | HRD WORKFLOW BARU
-                |--------------------------------------------------------------------------
-                */
                 'hrd_status' =>
                     'rejected',
 
@@ -510,11 +404,6 @@ class HrdLeaveRequestController extends Controller
                 'hrd_action_source' =>
                     'portal',
 
-                /*
-                |--------------------------------------------------------------------------
-                | FIELD LAMA
-                |--------------------------------------------------------------------------
-                */
                 'approved_by' =>
                     null,
 
@@ -532,11 +421,6 @@ class HrdLeaveRequestController extends Controller
                         'rejection_reason'
                     ],
 
-                /*
-                |--------------------------------------------------------------------------
-                | Trigger Sync FaceLog
-                |--------------------------------------------------------------------------
-                */
                 'local_sync_status' =>
                     'pending',
             ]);

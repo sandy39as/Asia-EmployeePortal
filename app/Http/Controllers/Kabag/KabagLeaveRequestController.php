@@ -13,20 +13,10 @@ class KabagLeaveRequestController extends Controller
     {
         $kabag = $request->user();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Karyawan yang berada di bawah Kabag ini
-        |--------------------------------------------------------------------------
-        */
         $employeeIds = $kabag
             ->managedEmployees()
             ->pluck('employees.id');
 
-        /*
-        |--------------------------------------------------------------------------
-        | Pengajuan karyawan bawahan
-        |--------------------------------------------------------------------------
-        */
         $items = LeaveRequest::query()
             ->with([
                 'employee',
@@ -47,10 +37,6 @@ class KabagLeaveRequestController extends Controller
                 $employeeIds
             )
 
-            /*
-             * Request lama yang kabag_user_id masih NULL
-             * tetap bisa terlihat berdasarkan mapping employee.
-             */
             ->where(function ($query) use ($kabag) {
                 $query
                     ->whereNull('kabag_user_id')
@@ -122,27 +108,12 @@ class KabagLeaveRequestController extends Controller
                 'kabag_rejection_reason' =>
                     null,
 
-                /*
-                |--------------------------------------------------------------------------
-                | Masuk antrean HRD
-                |--------------------------------------------------------------------------
-                */
                 'hrd_status' =>
                     'pending',
 
-                /*
-                |--------------------------------------------------------------------------
-                | Belum final
-                |--------------------------------------------------------------------------
-                */
                 'status' =>
                     'pending',
 
-                /*
-                |--------------------------------------------------------------------------
-                | Agar FaceLog bisa ikut sinkron
-                |--------------------------------------------------------------------------
-                */
                 'local_sync_status' =>
                     'pending',
             ]);
@@ -218,27 +189,12 @@ class KabagLeaveRequestController extends Controller
                 'kabag_approved_at' =>
                     null,
 
-                /*
-                |--------------------------------------------------------------------------
-                | HRD tidak perlu memproses
-                |--------------------------------------------------------------------------
-                */
                 'hrd_status' =>
                     'waiting',
 
-                /*
-                |--------------------------------------------------------------------------
-                | Reject Kabag = final rejected
-                |--------------------------------------------------------------------------
-                */
                 'status' =>
                     'rejected',
 
-                /*
-                |--------------------------------------------------------------------------
-                | Tandai perubahan untuk sinkronisasi
-                |--------------------------------------------------------------------------
-                */
                 'local_sync_status' =>
                     'pending',
             ]);
