@@ -12,86 +12,108 @@ class KabagMappingController extends Controller
 {
     public function index(Request $request)
     {
-        $kabagId = $request->integer('kabag_id');
-
         $search = trim(
             (string) $request->get('search', '')
         );
 
         $kabags = User::query()
             ->where('role', 'kabag')
-            ->where('is_active', true)
+            ->withCount('managedEmployees')
+            ->when(
+                $search !== '',
+                function ($query) use ($search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('username', 'like', "%{$search}%");
+                    });
+                }
+            )
             ->orderBy('name')
-            ->get();
-
-        $selectedKabag = null;
-
-        if ($kabagId) {
-            $selectedKabag = User::query()
-                ->where('role', 'kabag')
-                ->findOrFail($kabagId);
-        }
-
-        $employees = collect();
-
-        $mappedEmployeeIds = [];
-
-        if ($selectedKabag) {
-            $mappedEmployeeIds = DB::table('kabag_employee')
-                ->where(
-                    'kabag_user_id',
-                    $selectedKabag->id
-                )
-                ->pluck('employee_id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
-
-            $employees = Employee::query()
-                ->where('is_active', true)
-
-                ->when(
-                    $search !== '',
-                    function ($query) use ($search) {
-                        $query->where(
-                            function ($q) use ($search) {
-                                $q->where(
-                                    'nama',
-                                    'like',
-                                    "%{$search}%"
-                                )
-                                ->orWhere(
-                                    'employee_code',
-                                    'like',
-                                    "%{$search}%"
-                                )
-                                ->orWhere(
-                                    'jabatan',
-                                    'like',
-                                    "%{$search}%"
-                                );
-                            }
-                        );
-                    }
-                )
-
-                ->orderBy('nama')
-                ->paginate(30)
-                ->withQueryString();
-        }
+            ->paginate(15)
+            ->withQueryString();
 
         return view(
             'master.kabag-mapping.index',
             compact(
                 'kabags',
-                'selectedKabag',
-                'employees',
-                'mappedEmployeeIds',
                 'search'
             )
         );
     }
 
-    public function update(
+    public function show(
+        Request $request,
+        User $kabag
+    ) {
+        abort_unless(
+            $kabag->role === 'kabag',
+            404
+        );
+
+        $search = trim(
+            (string) $request->get('search', '')
+        );
+
+        $assignedEmployees = $kabag
+            ->managedEmployees()
+            ->orderBy('nama')
+            ->paginate(
+                20,
+                ['*'],
+                'assigned_page'
+            );
+
+        $assignedEmployeeIds = $kabag
+            ->managedEmployees()
+            ->pluck('employees.id');
+
+        $availableEmployees = Employee::query()
+            ->where('is_active', true)
+            ->whereNotIn(
+                'id',
+                $assignedEmployeeIds
+            )
+            ->when(
+                $search !== '',
+                function ($query) use ($search) {
+                    $query->where(
+                        function ($q) use ($search) {
+                            $q->where(
+                                'nama',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'employee_code',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'jabatan',
+                                'like',
+                                "%{$search}%"
+                            );
+                        }
+                    );
+                }
+            )
+            ->orderBy('nama')
+            ->limit(50)
+            ->get();
+
+        return view(
+            'master.kabag-mapping.show',
+            compact(
+                'kabag',
+                'assignedEmployees',
+                'availableEmployees',
+                'search'
+            )
+        );
+    }
+
+    public function assign(
         Request $request,
         User $kabag
     ) {
@@ -101,97 +123,86 @@ class KabagMappingController extends Controller
         );
 
         $validated = $request->validate([
-            'employee_ids' => [
-                'nullable',
-                'array',
-            ],
-
-            'employee_ids.*' => [
+            'employee_id' => [
+                'required',
                 'integer',
                 'exists:employees,id',
             ],
         ]);
 
-        $employeeIds = collect(
-            $validated['employee_ids'] ?? []
-        )
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
+        $employeeId = (int) $validated['employee_id'];
 
         DB::transaction(function () use (
             $kabag,
-            $employeeIds
+            $employeeId
         ) {
-
             /*
-            |--------------------------------------------------------------------------
-            | Lepaskan mapping lama Kabag ini
-            |--------------------------------------------------------------------------
-            */
-
+             * Satu karyawan hanya boleh punya satu Kabag.
+             * Kalau sebelumnya sudah ada di Kabag lain,
+             * pindahkan ke Kabag yang dipilih sekarang.
+             */
             DB::table('kabag_employee')
                 ->where(
-                    'kabag_user_id',
-                    $kabag->id
+                    'employee_id',
+                    $employeeId
                 )
                 ->delete();
 
-            /*
-            |--------------------------------------------------------------------------
-            | Pastikan employee tidak dimiliki Kabag lain
-            |--------------------------------------------------------------------------
-            */
+            DB::table('kabag_employee')
+                ->insert([
+                    'kabag_user_id' =>
+                        $kabag->id,
 
-            if (! empty($employeeIds)) {
-                DB::table('kabag_employee')
-                    ->whereIn(
-                        'employee_id',
-                        $employeeIds
-                    )
-                    ->delete();
+                    'employee_id' =>
+                        $employeeId,
 
-                $now = now();
+                    'created_at' =>
+                        now(),
 
-                $rows = collect($employeeIds)
-                    ->map(function ($employeeId) use (
-                        $kabag,
-                        $now
-                    ) {
-                        return [
-                            'kabag_user_id' =>
-                                $kabag->id,
-
-                            'employee_id' =>
-                                $employeeId,
-
-                            'created_at' =>
-                                $now,
-
-                            'updated_at' =>
-                                $now,
-                        ];
-                    })
-                    ->all();
-
-                DB::table(
-                    'kabag_employee'
-                )->insert($rows);
-            }
+                    'updated_at' =>
+                        now(),
+                ]);
         });
 
         return redirect()
             ->route(
-                'master.kabag-mapping.index',
-                [
-                    'kabag_id' =>
-                        $kabag->id,
-                ]
+                'master.kabag-mapping.show',
+                $kabag
             )
             ->with(
                 'success',
-                'Mapping Kabag berhasil diperbarui.'
+                'Karyawan berhasil dimasukkan ke Kabag.'
+            );
+    }
+
+    public function remove(
+        User $kabag,
+        Employee $employee
+    ) {
+        abort_unless(
+            $kabag->role === 'kabag',
+            404
+        );
+
+        DB::table('kabag_employee')
+            ->where(
+                'kabag_user_id',
+                $kabag->id
+            )
+            ->where(
+                'employee_id',
+                $employee->id
+            )
+            ->delete();
+
+        return redirect()
+            ->route(
+                'master.kabag-mapping.show',
+                $kabag
+            )
+            ->with(
+                'success',
+                'Karyawan berhasil dikeluarkan dari Kabag.'
             );
     }
 }

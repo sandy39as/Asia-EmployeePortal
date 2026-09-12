@@ -85,10 +85,20 @@ Route::middleware([
             [KabagMappingController::class, 'index']
         )->name('kabag-mapping.index');
 
-        Route::put(
+        Route::get(
             '/kabag-mapping/{kabag}',
-            [KabagMappingController::class, 'update']
-        )->name('kabag-mapping.update');
+            [KabagMappingController::class, 'show']
+        )->name('kabag-mapping.show');
+
+        Route::post(
+            '/kabag-mapping/{kabag}/assign',
+            [KabagMappingController::class, 'assign']
+        )->name('kabag-mapping.assign');
+
+        Route::delete(
+            '/kabag-mapping/{kabag}/employee/{employee}',
+            [KabagMappingController::class, 'remove']
+        )->name('kabag-mapping.remove');
 
     });
 
