@@ -22,10 +22,7 @@ class EnsurePortalMasterAdmin
             trim((string) $user->email)
         );
 
-        if (
-            $email !==
-            'sandyramdani65@gmail.com'
-        ) {
+        if ($email !== 'sandyramdani65@gmail.com') {
             abort(403);
         }
 

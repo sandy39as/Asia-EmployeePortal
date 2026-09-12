@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureHrd;
 use App\Http\Middleware\EnsurePasswordChanged;
+use App\Http\Middleware\EnsurePortalMasterAdmin;
 use App\Http\Middleware\VerifyFaceLogToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
