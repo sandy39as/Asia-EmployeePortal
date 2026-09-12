@@ -8,6 +8,7 @@ use App\Http\Controllers\Hrd\HrdEmployeeController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Master\KabagController;
 use App\Http\Controllers\Master\KabagMappingController;
+use App\Http\Controllers\Kabag\KabagLeaveRequestController;
 
 // Redirect Home
 Route::get('/', function () {
@@ -99,6 +100,23 @@ Route::middleware([
             '/kabag-mapping/{kabag}/employee/{employee}',
             [KabagMappingController::class, 'remove']
         )->name('kabag-mapping.remove');
+
+    });
+
+
+// kabag
+Route::middleware([
+    'auth',
+    'kabag',
+])
+    ->prefix('kabag')
+    ->name('kabag.')
+    ->group(function () {
+
+        Route::get(
+            '/pengajuan',
+            [KabagLeaveRequestController::class, 'index']
+        )->name('leave-requests.index');
 
     });
 

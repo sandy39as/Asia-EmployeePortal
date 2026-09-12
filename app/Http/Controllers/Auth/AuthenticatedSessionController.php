@@ -39,6 +39,11 @@ class AuthenticatedSessionController extends Controller
                 ->route('hrd.dashboard');
         }
 
+        if ($user->role === 'kabag') {
+            return redirect()
+                ->route('kabag.leave-requests.index');
+        }
+
         return redirect()
             ->route('dashboard');
     }

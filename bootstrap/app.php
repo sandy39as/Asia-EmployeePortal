@@ -7,6 +7,7 @@ use App\Http\Middleware\VerifyFaceLogToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\EnsureKabag;
 
 return Application::configure(
     basePath: dirname(__DIR__)
@@ -27,6 +28,7 @@ return Application::configure(
 
         $middleware->alias([
             'hrd' => EnsureHrd::class,
+            'kabag' => EnsureKabag::class,
             'facelog.token' => VerifyFaceLogToken::class,
             'portal.master-admin' => EnsurePortalMasterAdmin::class,
         ]);
