@@ -27,17 +27,41 @@ class FaceLogLeaveRequestController extends Controller
             ],
         ]);
 
+
         $perPage = (int) (
             $validated['per_page']
             ?? 100
         );
 
+
         $query = LeaveRequest::query()
             ->with([
                 'employee',
+
+                'kabag',
+                'kabagApprovedBy',
+                'kabagRejectedBy',
+
+                'hrdApprovedBy',
+                'hrdRejectedBy',
+
                 'approvedBy',
                 'rejectedBy',
-            ]);
+            ])
+
+            ->where(
+                'kabag_status',
+                'approved'
+            )
+
+            ->whereIn(
+                'hrd_status',
+                [
+                    'pending',
+                    'approved',
+                    'rejected',
+                ]
+            );
 
         if (
             ! empty(
@@ -51,10 +75,12 @@ class FaceLogLeaveRequestController extends Controller
             );
         }
 
+
         $items = $query
             ->orderBy('updated_at')
             ->orderBy('id')
             ->paginate($perPage);
+
 
         return response()->json([
             'success' => true,
@@ -65,10 +91,12 @@ class FaceLogLeaveRequestController extends Controller
             'data' =>
                 collect(
                     $items->items()
-                )->map(
-                    fn (LeaveRequest $item) =>
-                        $this->transform($item)
-                )->values(),
+                )
+                    ->map(
+                        fn (LeaveRequest $item) =>
+                            $this->transform($item)
+                    )
+                    ->values(),
 
             'pagination' => [
                 'current_page' =>
@@ -92,18 +120,35 @@ class FaceLogLeaveRequestController extends Controller
     public function show(
         string $uuid
     ): JsonResponse {
+
         $item = LeaveRequest::query()
             ->with([
                 'employee',
+
+                'kabag',
+                'kabagApprovedBy',
+                'kabagRejectedBy',
+
+                'hrdApprovedBy',
+                'hrdRejectedBy',
+
                 'approvedBy',
                 'rejectedBy',
             ])
-            ->where('uuid', $uuid)
+
+            ->where(
+                'uuid',
+                $uuid
+            )
+
             ->firstOrFail();
+
 
         return response()->json([
             'success' => true,
-            'data' => $this->transform($item),
+
+            'data' =>
+                $this->transform($item),
         ]);
     }
 
@@ -111,20 +156,23 @@ class FaceLogLeaveRequestController extends Controller
         Request $request,
         string $uuid
     ): JsonResponse {
-        $validated = $request->validate([
 
-            'approved_by_name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-        ]);
+        $validated =
+            $request->validate([
+                'approved_by_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                ],
+            ]);
+
 
         $item = DB::transaction(
             function () use (
                 $uuid,
                 $validated
             ) {
+
                 $item = LeaveRequest::query()
                     ->where(
                         'uuid',
@@ -134,10 +182,36 @@ class FaceLogLeaveRequestController extends Controller
                     ->firstOrFail();
 
                 if (
-                    $item->status
+                    $item->hrd_status
                     === 'approved'
                 ) {
                     return $item;
+                }
+
+
+                if (
+                    $item->kabag_status
+                    !== 'approved'
+                ) {
+                    throw ValidationException::withMessages([
+                        'kabag_status' =>
+                            'Pengajuan belum disetujui oleh Kabag.',
+                    ]);
+                }
+
+                if (
+                    $item->hrd_status
+                    !== 'pending'
+                ) {
+                    throw ValidationException::withMessages([
+                        'hrd_status' =>
+                            'Pengajuan sudah diproses HRD dengan status '
+                            . (
+                                $item->hrd_status
+                                ?? '-'
+                            )
+                            . '.',
+                    ]);
                 }
 
                 if (
@@ -146,21 +220,46 @@ class FaceLogLeaveRequestController extends Controller
                 ) {
                     throw ValidationException::withMessages([
                         'status' =>
-                            'Pengajuan sudah diproses dengan status '
+                            'Pengajuan sudah memiliki status final '
                             . $item->status
                             . '.',
                     ]);
                 }
 
+
+                $now = now();
+
                 $item->update([
+
                     'status' =>
                         'approved',
+
+                    'hrd_status' =>
+                        'approved',
+
+                    'hrd_approved_by' =>
+                        null,
+
+                    'hrd_approved_at' =>
+                        $now,
+
+                    'hrd_rejected_by' =>
+                        null,
+
+                    'hrd_rejected_at' =>
+                        null,
+
+                    'hrd_rejection_reason' =>
+                        null,
+
+                    'hrd_action_source' =>
+                        'facelog',
 
                     'approved_by' =>
                         null,
 
                     'approved_at' =>
-                        now(),
+                        $now,
 
                     'rejected_by' =>
                         null,
@@ -171,33 +270,44 @@ class FaceLogLeaveRequestController extends Controller
                     'rejection_reason' =>
                         null,
 
+                    'external_approved_by_name' =>
+                        $validated[
+                            'approved_by_name'
+                        ],
+
+                    'external_rejected_by_name' =>
+                        null,
+
                     'local_sync_status' =>
                         'synced',
 
                     'local_synced_at' =>
-                        now(),
+                        $now,
                 ]);
 
-                $item->update([
-                    'external_approved_by_name' =>
-                        $validated['approved_by_name'],
-
-                    'external_rejected_by_name' =>
-                        null,
-                ]);
 
                 return $item->fresh([
                     'employee',
+
+                    'kabag',
+                    'kabagApprovedBy',
+                    'kabagRejectedBy',
+
+                    'hrdApprovedBy',
+                    'hrdRejectedBy',
+
                     'approvedBy',
                     'rejectedBy',
                 ]);
             }
         );
 
+
         return response()->json([
             'success' => true,
+
             'message' =>
-                'Pengajuan berhasil disetujui.',
+                'Pengajuan berhasil disetujui HRD melalui FaceLog.',
 
             'data' =>
                 $this->transform($item),
@@ -208,25 +318,29 @@ class FaceLogLeaveRequestController extends Controller
         Request $request,
         string $uuid
     ): JsonResponse {
-        $validated = $request->validate([
-            'rejected_by_name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
 
-            'rejection_reason' => [
-                'required',
-                'string',
-                'max:1000',
-            ],
-        ]);
+        $validated =
+            $request->validate([
+                'rejected_by_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                ],
+
+                'rejection_reason' => [
+                    'required',
+                    'string',
+                    'max:1000',
+                ],
+            ]);
+
 
         $item = DB::transaction(
             function () use (
                 $uuid,
                 $validated
             ) {
+
                 $item = LeaveRequest::query()
                     ->where(
                         'uuid',
@@ -236,10 +350,35 @@ class FaceLogLeaveRequestController extends Controller
                     ->firstOrFail();
 
                 if (
-                    $item->status
+                    $item->hrd_status
                     === 'rejected'
                 ) {
                     return $item;
+                }
+
+                if (
+                    $item->kabag_status
+                    !== 'approved'
+                ) {
+                    throw ValidationException::withMessages([
+                        'kabag_status' =>
+                            'Pengajuan belum disetujui oleh Kabag.',
+                    ]);
+                }
+
+                if (
+                    $item->hrd_status
+                    !== 'pending'
+                ) {
+                    throw ValidationException::withMessages([
+                        'hrd_status' =>
+                            'Pengajuan sudah diproses HRD dengan status '
+                            . (
+                                $item->hrd_status
+                                ?? '-'
+                            )
+                            . '.',
+                    ]);
                 }
 
                 if (
@@ -248,15 +387,42 @@ class FaceLogLeaveRequestController extends Controller
                 ) {
                     throw ValidationException::withMessages([
                         'status' =>
-                            'Pengajuan sudah diproses dengan status '
+                            'Pengajuan sudah memiliki status final '
                             . $item->status
                             . '.',
                     ]);
                 }
 
+
+                $now = now();
+
                 $item->update([
+
                     'status' =>
                         'rejected',
+
+                    'hrd_status' =>
+                        'rejected',
+
+                    'hrd_approved_by' =>
+                        null,
+
+                    'hrd_approved_at' =>
+                        null,
+
+                    'hrd_rejected_by' =>
+                        null,
+
+                    'hrd_rejected_at' =>
+                        $now,
+
+                    'hrd_rejection_reason' =>
+                        $validated[
+                            'rejection_reason'
+                        ],
+
+                    'hrd_action_source' =>
+                        'facelog',
 
                     'approved_by' =>
                         null,
@@ -268,18 +434,12 @@ class FaceLogLeaveRequestController extends Controller
                         null,
 
                     'rejected_at' =>
-                        now(),
+                        $now,
 
                     'rejection_reason' =>
                         $validated[
                             'rejection_reason'
                         ],
-
-                    'local_sync_status' =>
-                        'synced',
-
-                    'local_synced_at' =>
-                        now(),
 
                     'external_approved_by_name' =>
                         null,
@@ -288,20 +448,37 @@ class FaceLogLeaveRequestController extends Controller
                         $validated[
                             'rejected_by_name'
                         ],
+
+                    'local_sync_status' =>
+                        'synced',
+
+                    'local_synced_at' =>
+                        $now,
                 ]);
+
 
                 return $item->fresh([
                     'employee',
+
+                    'kabag',
+                    'kabagApprovedBy',
+                    'kabagRejectedBy',
+
+                    'hrdApprovedBy',
+                    'hrdRejectedBy',
+
                     'approvedBy',
                     'rejectedBy',
                 ]);
             }
         );
 
+
         return response()->json([
             'success' => true,
+
             'message' =>
-                'Pengajuan berhasil ditolak.',
+                'Pengajuan berhasil ditolak HRD melalui FaceLog.',
 
             'data' =>
                 $this->transform($item),
@@ -311,9 +488,72 @@ class FaceLogLeaveRequestController extends Controller
     protected function transform(
         LeaveRequest $item
     ): array {
-        $employee = $item->employee;
+
+        $employee =
+            $item->employee;
+
+
+        $hrdApprovedName =
+            $item->hrdApprovedBy?->name
+            ?? $item->approvedBy?->name
+            ?? $item->external_approved_by_name;
+
+
+        $hrdRejectedName =
+            $item->hrdRejectedBy?->name
+            ?? $item->rejectedBy?->name
+            ?? $item->external_rejected_by_name;
+
+        $lampiranUrl = null;
+
+
+        if ($item->lampiran_path) {
+
+            $lampiranPath =
+                ltrim(
+                    (string) $item->lampiran_path,
+                    '/'
+                );
+
+
+            if (
+                str_starts_with(
+                    $lampiranPath,
+                    'storage/'
+                )
+            ) {
+                $lampiranPath =
+                    substr(
+                        $lampiranPath,
+                        strlen('storage/')
+                    );
+            }
+
+
+            if (
+                str_starts_with(
+                    $lampiranPath,
+                    'uploads/'
+                )
+            ) {
+                $lampiranPath =
+                    substr(
+                        $lampiranPath,
+                        strlen('uploads/')
+                    );
+            }
+
+
+            $lampiranUrl =
+                url(
+                    '/uploads/'
+                    . $lampiranPath
+                );
+        }
+
 
         return [
+
             'uuid' =>
                 $item->uuid,
 
@@ -371,34 +611,72 @@ class FaceLogLeaveRequestController extends Controller
                 $item->alasan,
 
             'lampiran_url' =>
-                $item->lampiran_path
-                    ? url(
-                        '/storage/'
-                        . $item->lampiran_path
-                    )
-                    : null,
+                $lampiranUrl,
+
 
             'status' =>
                 $item->status,
 
+            'kabag_status' =>
+                $item->kabag_status,
+
+            'kabag_name' =>
+                $item->kabagApprovedBy?->name
+                ?? $item->kabag?->name,
+
+            'kabag_approved_at' =>
+                $item->kabag_approved_at
+                    ?->toIso8601String(),
+
+            'kabag_rejection_reason' =>
+                $item->kabag_rejection_reason,
+
+            'hrd_status' =>
+                $item->hrd_status,
+
+            'hrd_action_source' =>
+                $item->hrd_action_source,
+
+            'hrd_approved_by' =>
+                $hrdApprovedName,
+
+            'hrd_approved_at' =>
+                $item->hrd_approved_at
+                    ?->toIso8601String(),
+
+            'hrd_rejected_by' =>
+                $hrdRejectedName,
+
+            'hrd_rejected_at' =>
+                $item->hrd_rejected_at
+                    ?->toIso8601String(),
+
+            'hrd_rejection_reason' =>
+                $item->hrd_rejection_reason,
+
             'approved_by' =>
-                $item->approvedBy?->name
-                ?? $item->external_approved_by_name,
+                $hrdApprovedName,
 
             'approved_at' =>
-                $item->approved_at
+                (
+                    $item->hrd_approved_at
+                    ?? $item->approved_at
+                )
                     ?->toIso8601String(),
 
             'rejected_by' =>
-                $item->rejectedBy?->name
-                ?? $item->external_rejected_by_name,
+                $hrdRejectedName,
 
             'rejected_at' =>
-                $item->rejected_at
+                (
+                    $item->hrd_rejected_at
+                    ?? $item->rejected_at
+                )
                     ?->toIso8601String(),
 
             'rejection_reason' =>
-                $item->rejection_reason,
+                $item->hrd_rejection_reason
+                ?? $item->rejection_reason,
 
             'created_at' =>
                 $item->created_at

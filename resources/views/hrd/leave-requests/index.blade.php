@@ -654,6 +654,7 @@
                                             <strong>
                                                 {{ $item->hrdApprovedBy?->name
                                                     ?? $item->approvedBy?->name
+                                                    ?? $item->external_approved_by_name
                                                     ?? 'HRD' }}
                                             </strong>
                                         </div>
@@ -695,6 +696,7 @@
                                             <strong>
                                                 {{ $item->hrdRejectedBy?->name
                                                     ?? $item->rejectedBy?->name
+                                                    ?? $item->external_rejected_by_name
                                                     ?? 'HRD' }}
                                             </strong>
                                         </div>
@@ -986,6 +988,7 @@
                                 <strong>
                                     {{ $item->hrdApprovedBy?->name
                                         ?? $item->approvedBy?->name
+                                        ?? $item->external_approved_by_name
                                         ?? 'HRD' }}
                                 </strong>
 
