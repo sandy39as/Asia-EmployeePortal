@@ -145,4 +145,47 @@ class LeaveRequest extends Model
         );
     }
 
+    public function getKabagStatusLabelAttribute(): string
+    {
+        return match ($this->kabag_status) {
+            'approved' => 'Disetujui Kabag',
+            'rejected' => 'Ditolak Kabag',
+            default => 'Menunggu Kabag',
+        };
+    }
+
+    public function getHrdStatusLabelAttribute(): string
+    {
+        return match ($this->hrd_status) {
+            'approved' => 'Disetujui HRD',
+            'rejected' => 'Ditolak HRD',
+            'pending' => 'Menunggu HRD',
+            default => 'Belum Masuk HRD',
+        };
+    }
+
+    public function getFinalStatusLabelAttribute(): string
+    {
+        if ($this->kabag_status === 'rejected') {
+            return 'Ditolak Kabag';
+        }
+
+        if ($this->hrd_status === 'rejected') {
+            return 'Ditolak HRD';
+        }
+
+        if (
+            $this->kabag_status === 'approved'
+            && $this->hrd_status === 'approved'
+        ) {
+            return 'Disetujui';
+        }
+
+        if ($this->kabag_status === 'approved') {
+            return 'Menunggu HRD';
+        }
+
+        return 'Menunggu Kabag';
+    }
+
 }
