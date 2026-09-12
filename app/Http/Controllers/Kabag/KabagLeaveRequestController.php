@@ -30,8 +30,16 @@ class KabagLeaveRequestController extends Controller
         $items = LeaveRequest::query()
             ->with([
                 'employee',
+
+                'kabag',
                 'kabagApprovedBy',
                 'kabagRejectedBy',
+
+                'hrdApprovedBy',
+                'hrdRejectedBy',
+
+                'approvedBy',
+                'rejectedBy',
             ])
 
             ->whereIn(
@@ -40,7 +48,7 @@ class KabagLeaveRequestController extends Controller
             )
 
             /*
-             * Untuk request lama yang kabag_user_id masih NULL,
+             * Request lama yang kabag_user_id masih NULL
              * tetap bisa terlihat berdasarkan mapping employee.
              */
             ->where(function ($query) use ($kabag) {
@@ -53,7 +61,8 @@ class KabagLeaveRequestController extends Controller
             })
 
             ->latest('created_at')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view(
             'kabag.leave-requests.index',
@@ -89,6 +98,7 @@ class KabagLeaveRequestController extends Controller
             $kabag,
             $leaveRequest
         ) {
+            $now = now();
 
             $leaveRequest->update([
                 'kabag_user_id' =>
@@ -101,7 +111,7 @@ class KabagLeaveRequestController extends Controller
                     $kabag->id,
 
                 'kabag_approved_at' =>
-                    now(),
+                    $now,
 
                 'kabag_rejected_by' =>
                     null,
@@ -112,12 +122,27 @@ class KabagLeaveRequestController extends Controller
                 'kabag_rejection_reason' =>
                     null,
 
+                /*
+                |--------------------------------------------------------------------------
+                | Masuk antrean HRD
+                |--------------------------------------------------------------------------
+                */
                 'hrd_status' =>
                     'pending',
 
+                /*
+                |--------------------------------------------------------------------------
+                | Belum final
+                |--------------------------------------------------------------------------
+                */
                 'status' =>
                     'pending',
 
+                /*
+                |--------------------------------------------------------------------------
+                | Agar FaceLog bisa ikut sinkron
+                |--------------------------------------------------------------------------
+                */
                 'local_sync_status' =>
                     'pending',
             ]);
@@ -125,7 +150,7 @@ class KabagLeaveRequestController extends Controller
 
         return back()->with(
             'success',
-            'Pengajuan berhasil disetujui dan akan diteruskan ke HRD.'
+            'Pengajuan berhasil disetujui Kabag dan diteruskan ke HRD.'
         );
     }
 
@@ -141,13 +166,19 @@ class KabagLeaveRequestController extends Controller
             $leaveRequest
         );
 
-        $validated = $request->validate([
-            'rejection_reason' => [
-                'required',
-                'string',
-                'max:1000',
+        $validated = $request->validate(
+            [
+                'rejection_reason' => [
+                    'required',
+                    'string',
+                    'max:1000',
+                ],
             ],
-        ]);
+            [
+                'rejection_reason.required' =>
+                    'Alasan penolakan wajib diisi.',
+            ]
+        );
 
         if (
             $leaveRequest->kabag_status !== 'pending'
@@ -163,6 +194,7 @@ class KabagLeaveRequestController extends Controller
             $leaveRequest,
             $validated
         ) {
+            $now = now();
 
             $leaveRequest->update([
                 'kabag_user_id' =>
@@ -175,7 +207,7 @@ class KabagLeaveRequestController extends Controller
                     $kabag->id,
 
                 'kabag_rejected_at' =>
-                    now(),
+                    $now,
 
                 'kabag_rejection_reason' =>
                     $validated['rejection_reason'],
@@ -185,12 +217,36 @@ class KabagLeaveRequestController extends Controller
 
                 'kabag_approved_at' =>
                     null,
+
+                /*
+                |--------------------------------------------------------------------------
+                | HRD tidak perlu memproses
+                |--------------------------------------------------------------------------
+                */
+                'hrd_status' =>
+                    'waiting',
+
+                /*
+                |--------------------------------------------------------------------------
+                | Reject Kabag = final rejected
+                |--------------------------------------------------------------------------
+                */
+                'status' =>
+                    'rejected',
+
+                /*
+                |--------------------------------------------------------------------------
+                | Tandai perubahan untuk sinkronisasi
+                |--------------------------------------------------------------------------
+                */
+                'local_sync_status' =>
+                    'pending',
             ]);
         });
 
         return back()->with(
             'success',
-            'Pengajuan berhasil ditolak.'
+            'Pengajuan berhasil ditolak oleh Kabag.'
         );
     }
 
@@ -199,7 +255,6 @@ class KabagLeaveRequestController extends Controller
         $kabag,
         LeaveRequest $leaveRequest
     ): void {
-
         $allowed = $kabag
             ->managedEmployees()
             ->where(

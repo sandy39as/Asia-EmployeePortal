@@ -40,30 +40,76 @@
 
                 @php
                     $kabagStatus = $item->kabag_status ?? 'pending';
+                    $hrdStatus = $item->hrd_status ?? 'waiting';
 
-                    $badge = match ($kabagStatus) {
-                        'approved' =>
-                            'bg-emerald-50 text-emerald-700 border-emerald-200',
-
-                        'rejected' =>
-                            'bg-rose-50 text-rose-700 border-rose-200',
-
-                        default =>
-                            'bg-amber-50 text-amber-700 border-amber-200',
-                    };
-
-                    $statusLabel = match ($kabagStatus) {
+                    $kabagLabel = match ($kabagStatus) {
                         'approved' => 'Disetujui Kabag',
                         'rejected' => 'Ditolak Kabag',
                         default => 'Menunggu Kabag',
+                    };
+
+                    $hrdLabel = match ($hrdStatus) {
+                        'approved' => 'Disetujui HRD',
+                        'rejected' => 'Ditolak HRD',
+                        'pending' => 'Menunggu HRD',
+                        default => 'Belum Masuk HRD',
+                    };
+
+                    $finalLabel = match (true) {
+                        $item->status === 'cancelled' => 'Dibatalkan',
+                        $kabagStatus === 'rejected' => 'Ditolak Kabag',
+                        $hrdStatus === 'rejected' => 'Ditolak HRD',
+                        $kabagStatus === 'approved' && $hrdStatus === 'approved' => 'Disetujui',
+                        $kabagStatus === 'approved' => 'Menunggu HRD',
+                        default => 'Menunggu Kabag',
+                    };
+
+                    $finalClass = match (true) {
+                        $item->status === 'cancelled'
+                            => 'border-slate-200 bg-slate-100 text-slate-700',
+
+                        $kabagStatus === 'rejected' || $hrdStatus === 'rejected'
+                            => 'border-rose-200 bg-rose-50 text-rose-800',
+
+                        $kabagStatus === 'approved' && $hrdStatus === 'approved'
+                            => 'border-emerald-200 bg-emerald-50 text-emerald-800',
+
+                        default
+                            => 'border-amber-200 bg-amber-50 text-amber-800',
+                    };
+
+                    $kabagClass = match ($kabagStatus) {
+                        'approved'
+                            => 'border-emerald-200 bg-emerald-50 text-emerald-800',
+
+                        'rejected'
+                            => 'border-rose-200 bg-rose-50 text-rose-800',
+
+                        default
+                            => 'border-amber-200 bg-amber-50 text-amber-800',
+                    };
+
+                    $hrdClass = match ($hrdStatus) {
+                        'approved'
+                            => 'border-emerald-200 bg-emerald-50 text-emerald-800',
+
+                        'rejected'
+                            => 'border-rose-200 bg-rose-50 text-rose-800',
+
+                        'pending'
+                            => 'border-amber-200 bg-amber-50 text-amber-800',
+
+                        default
+                            => 'border-slate-200 bg-slate-50 text-slate-600',
                     };
                 @endphp
 
 
                 <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
 
-                    <div class="p-5">
+                    <div class="p-5 space-y-4">
 
+                        {{-- TOP --}}
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
                             {{-- EMPLOYEE --}}
@@ -95,10 +141,8 @@
                                         !==
                                         $item->tanggal_selesai->toDateString()
                                     )
-
                                         –
                                         {{ $item->tanggal_selesai->format('d/m/Y') }}
-
                                     @endif
 
                                 </div>
@@ -111,11 +155,11 @@
                             </div>
 
 
-                            {{-- STATUS --}}
+                            {{-- FINAL STATUS --}}
                             <div>
 
-                                <span class="inline-flex rounded-xl border px-3 py-1.5 text-xs font-extrabold {{ $badge }}">
-                                    {{ $statusLabel }}
+                                <span class="inline-flex rounded-xl border px-3 py-1.5 text-xs font-extrabold {{ $finalClass }}">
+                                    {{ $finalLabel }}
                                 </span>
 
                             </div>
@@ -123,10 +167,205 @@
                         </div>
 
 
-                        {{-- APPROVAL --}}
+                        {{-- PROGRESS APPROVAL --}}
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+
+                            <div class="mb-3">
+                                <div class="text-[10px] font-extrabold uppercase tracking-[0.15em] text-slate-400">
+                                    Progress Persetujuan
+                                </div>
+
+                                <div class="mt-1 text-sm font-extrabold text-slate-900">
+                                    Kabag → HRD
+                                </div>
+                            </div>
+
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                                {{-- KABAG --}}
+                                <div class="rounded-xl border p-3 {{ $kabagClass }}">
+
+                                    <div class="flex items-start justify-between gap-3">
+
+                                        <div>
+                                            <div class="text-[10px] font-extrabold uppercase tracking-wider opacity-70">
+                                                Kabag
+                                            </div>
+
+                                            <div class="mt-1 text-sm font-extrabold">
+                                                {{ $kabagLabel }}
+                                            </div>
+                                        </div>
+
+
+                                        <div class="text-lg font-black">
+
+                                            @if ($kabagStatus === 'approved')
+                                                ✓
+                                            @elseif ($kabagStatus === 'rejected')
+                                                ✕
+                                            @else
+                                                …
+                                            @endif
+
+                                        </div>
+
+                                    </div>
+
+
+                                    @if ($kabagStatus === 'approved')
+
+                                        <div class="mt-2 text-xs leading-5">
+
+                                            <div>
+                                                Oleh:
+                                                <strong>
+                                                    {{ $item->kabagApprovedBy?->name ?? $kabag->name }}
+                                                </strong>
+                                            </div>
+
+                                            @if ($item->kabag_approved_at)
+                                                <div>
+                                                    {{ $item->kabag_approved_at
+                                                        ->timezone('Asia/Jakarta')
+                                                        ->format('d/m/Y H:i') }}
+                                                </div>
+                                            @endif
+
+                                        </div>
+
+                                    @elseif ($kabagStatus === 'rejected')
+
+                                        <div class="mt-2 text-xs leading-5">
+
+                                            <div>
+                                                Oleh:
+                                                <strong>
+                                                    {{ $item->kabagRejectedBy?->name ?? $kabag->name }}
+                                                </strong>
+                                            </div>
+
+                                            @if ($item->kabag_rejection_reason)
+                                                <div class="mt-1">
+                                                    Alasan:
+                                                    <strong>
+                                                        {{ $item->kabag_rejection_reason }}
+                                                    </strong>
+                                                </div>
+                                            @endif
+
+                                        </div>
+
+                                    @endif
+
+                                </div>
+
+
+                                {{-- HRD --}}
+                                <div class="rounded-xl border p-3 {{ $hrdClass }}">
+
+                                    <div class="flex items-start justify-between gap-3">
+
+                                        <div>
+                                            <div class="text-[10px] font-extrabold uppercase tracking-wider opacity-70">
+                                                HRD
+                                            </div>
+
+                                            <div class="mt-1 text-sm font-extrabold">
+                                                {{ $hrdLabel }}
+                                            </div>
+                                        </div>
+
+
+                                        <div class="text-lg font-black">
+
+                                            @if ($hrdStatus === 'approved')
+                                                ✓
+                                            @elseif ($hrdStatus === 'rejected')
+                                                ✕
+                                            @elseif ($hrdStatus === 'pending')
+                                                …
+                                            @else
+                                                —
+                                            @endif
+
+                                        </div>
+
+                                    </div>
+
+
+                                    @if ($hrdStatus === 'approved')
+
+                                        <div class="mt-2 text-xs leading-5">
+
+                                            <div>
+                                                Oleh:
+                                                <strong>
+                                                    {{ $item->hrdApprovedBy?->name
+                                                        ?? $item->approvedBy?->name
+                                                        ?? 'HRD' }}
+                                                </strong>
+                                            </div>
+
+                                            @if ($item->hrd_approved_at)
+                                                <div>
+                                                    {{ $item->hrd_approved_at
+                                                        ->timezone('Asia/Jakarta')
+                                                        ->format('d/m/Y H:i') }}
+                                                </div>
+                                            @endif
+
+                                            @if ($item->hrd_action_source)
+                                                <div>
+                                                    Melalui:
+                                                    <strong>
+                                                        {{ $item->hrd_action_source === 'facelog'
+                                                            ? 'FaceLog'
+                                                            : 'Portal' }}
+                                                    </strong>
+                                                </div>
+                                            @endif
+
+                                        </div>
+
+                                    @elseif ($hrdStatus === 'rejected')
+
+                                        <div class="mt-2 text-xs leading-5">
+
+                                            <div>
+                                                Oleh:
+                                                <strong>
+                                                    {{ $item->hrdRejectedBy?->name
+                                                        ?? $item->rejectedBy?->name
+                                                        ?? 'HRD' }}
+                                                </strong>
+                                            </div>
+
+                                            @if ($item->hrd_rejection_reason)
+                                                <div class="mt-1">
+                                                    Alasan:
+                                                    <strong>
+                                                        {{ $item->hrd_rejection_reason }}
+                                                    </strong>
+                                                </div>
+                                            @endif
+
+                                        </div>
+
+                                    @endif
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        {{-- APPROVAL ACTION --}}
                         @if ($kabagStatus === 'pending')
 
-                            <div class="mt-5 border-t border-slate-100 pt-4">
+                            <div class="border-t border-slate-100 pt-4">
 
                                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 
@@ -175,7 +414,7 @@
 
                                         <p class="text-xs leading-5 text-slate-500">
                                             Setujui jika data pengajuan karyawan sudah sesuai.
-                                            Pengajuan akan diteruskan ke HRD untuk persetujuan final.
+                                            Setelah disetujui, pengajuan akan diteruskan ke HRD.
                                         </p>
 
                                         <button
@@ -188,37 +427,6 @@
 
                                     </form>
 
-                                </div>
-
-                            </div>
-
-                        @elseif ($kabagStatus === 'approved')
-
-                            <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
-
-                                Disetujui oleh
-                                {{ $item->kabagApprovedBy?->name ?? $kabag->name }}
-
-                                @if ($item->kabag_approved_at)
-                                    pada
-                                    {{ $item->kabag_approved_at
-                                        ->timezone('Asia/Jakarta')
-                                        ->format('d/m/Y H:i') }}
-                                @endif
-
-                            </div>
-
-                        @elseif ($kabagStatus === 'rejected')
-
-                            <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-800">
-
-                                <div>
-                                    Pengajuan ditolak.
-                                </div>
-
-                                <div class="mt-1 font-medium">
-                                    Alasan:
-                                    {{ $item->kabag_rejection_reason ?: '-' }}
                                 </div>
 
                             </div>
@@ -249,11 +457,9 @@
 
 
         @if ($items->hasPages())
-
             <div>
                 {{ $items->links() }}
             </div>
-
         @endif
 
     </div>
