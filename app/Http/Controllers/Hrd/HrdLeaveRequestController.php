@@ -391,10 +391,7 @@ class HrdLeaveRequestController extends Controller
 
 
         return redirect()
-            ->route(
-                'hrd.leave-requests.show',
-                $leaveRequest
-            )
+            ->route('hrd.leave-requests.index')
             ->with(
                 'success',
                 'Pengajuan berhasil disetujui HRD dan menjadi persetujuan final.'
@@ -547,10 +544,7 @@ class HrdLeaveRequestController extends Controller
 
 
         return redirect()
-            ->route(
-                'hrd.leave-requests.show',
-                $leaveRequest
-            )
+            ->route('hrd.leave-requests.index')
             ->with(
                 'success',
                 'Pengajuan berhasil ditolak oleh HRD.'
