@@ -6,6 +6,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Hrd\HrdLeaveRequestController;
 use App\Http\Controllers\Hrd\HrdEmployeeController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Master\KabagController;
+use App\Http\Controllers\Master\KabagMappingController;
 
 // Redirect Home
 Route::get('/', function () {
@@ -63,5 +65,31 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Kabag Routes
+Route::middleware([
+    'auth',
+    'portal.master-admin',
+])
+    ->prefix('master')
+    ->name('master.')
+    ->group(function () {
+
+        Route::resource(
+            'kabag',
+            KabagController::class
+        )->except('show');
+
+        Route::get(
+            '/kabag-mapping',
+            [KabagMappingController::class, 'index']
+        )->name('kabag-mapping.index');
+
+        Route::put(
+            '/kabag-mapping/{kabag}',
+            [KabagMappingController::class, 'update']
+        )->name('kabag-mapping.update');
+
+    });
 
 require __DIR__.'/auth.php';

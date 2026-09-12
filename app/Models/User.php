@@ -59,4 +59,20 @@ class User extends Authenticatable
     {
         return $this->role === 'karyawan';
     }
+
+    public function managedEmployees()
+    {
+        return $this->belongsToMany(
+            \App\Models\Employee::class,
+            'kabag_employee',
+            'kabag_user_id',
+            'employee_id'
+        )->withTimestamps();
+    }
+
+    public function isKabag(): bool
+    {
+        return $this->role === 'kabag';
+    }
+
 }

@@ -25,6 +25,17 @@
     };
 @endphp
 
+@php
+    $isPortalMasterAdmin =
+        auth()->check()
+        &&
+        strtolower(
+            trim(
+                (string) auth()->user()->email
+            )
+        ) === 'sandyramdani65@gmail.com';
+@endphp
+
 {{-- ========================================================= --}}
 {{-- MOBILE BACKDROP --}}
 {{-- ========================================================= --}}
@@ -110,6 +121,28 @@
             <div class="mb-2 px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Menu Utama
             </div>
+
+            @if ($isPortalMasterAdmin)
+
+                <div class="mt-6 px-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">
+                    Master Data
+                </div>
+
+                <a
+                    href="{{ route('master.kabag.index') }}"
+                    class="..."
+                >
+                    Kabag
+                </a>
+
+                <a
+                    href="{{ route('master.kabag-mapping.index') }}"
+                    class="..."
+                >
+                    Mapping Kabag
+                </a>
+
+            @endif
 
             @if ($isHrd)
                 {{-- HRD MENUS --}}

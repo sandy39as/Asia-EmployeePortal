@@ -42,4 +42,17 @@ class Employee extends Model
     {
         return $this->hasMany(LeaveRequest::class);
     }
+
+    public function kabag()
+    {
+        return $this->belongsToMany(
+            \App\Models\User::class,
+            'kabag_employee',
+            'employee_id',
+            'kabag_user_id'
+        )
+        ->where('users.role', 'kabag')
+        ->withTimestamps();
+    }
+
 }

@@ -27,6 +27,7 @@ return Application::configure(
         $middleware->alias([
             'hrd' => EnsureHrd::class,
             'facelog.token' => VerifyFaceLogToken::class,
+            'portal.master-admin' => EnsurePortalMasterAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
