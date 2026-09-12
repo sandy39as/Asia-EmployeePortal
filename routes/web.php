@@ -118,6 +118,18 @@ Route::middleware([
             [KabagLeaveRequestController::class, 'index']
         )->name('leave-requests.index');
 
+
+        Route::post(
+            '/pengajuan/{leaveRequest}/approve',
+            [KabagLeaveRequestController::class, 'approve']
+        )->name('leave-requests.approve');
+
+
+        Route::post(
+            '/pengajuan/{leaveRequest}/reject',
+            [KabagLeaveRequestController::class, 'reject']
+        )->name('leave-requests.reject');
+
     });
 
 require __DIR__.'/auth.php';

@@ -32,6 +32,13 @@ class LeaveRequest extends Model
         'local_sync_status',
         'external_approved_by_name',
         'external_rejected_by_name',
+        'kabag_user_id',
+        'kabag_status',
+        'kabag_approved_by',
+        'kabag_approved_at',
+        'kabag_rejected_by',
+        'kabag_rejected_at',
+        'kabag_rejection_reason',
     ];
 
     protected function casts(): array
@@ -42,6 +49,8 @@ class LeaveRequest extends Model
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'local_synced_at' => 'datetime',
+            'kabag_approved_at' => 'datetime',
+            'kabag_rejected_at' => 'datetime',
         ];
     }
 
@@ -86,4 +95,29 @@ class LeaveRequest extends Model
             default => ucfirst($this->status),
         };
     }
+
+    public function kabag()
+    {
+        return $this->belongsTo(
+            \App\Models\User::class,
+            'kabag_user_id'
+        );
+    }
+
+    public function kabagApprovedBy()
+    {
+        return $this->belongsTo(
+            \App\Models\User::class,
+            'kabag_approved_by'
+        );
+    }
+
+    public function kabagRejectedBy()
+    {
+        return $this->belongsTo(
+            \App\Models\User::class,
+            'kabag_rejected_by'
+        );
+    }
+
 }
