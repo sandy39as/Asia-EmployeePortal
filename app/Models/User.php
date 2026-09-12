@@ -20,6 +20,7 @@ class User extends Authenticatable
         'role',
         'must_change_password',
         'is_active',
+        'email_verified_at',
     ];
 
     protected $hidden = [
