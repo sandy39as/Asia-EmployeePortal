@@ -31,6 +31,14 @@
                 <span class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-amber-800">
                     Wajib Ganti PW: {{ number_format($summary['must_change_password'] ?? 0) }}
                 </span>
+
+                <span class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-sky-800">
+                    ASIA: {{ number_format($summary['asia'] ?? 0) }}
+                </span>
+
+                <span class="rounded-xl border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs sm:text-sm font-bold text-orange-800">
+                    Outsourcing: {{ number_format($summary['outsourcing'] ?? 0) }}
+                </span>
             </div>
 
             {{-- SEARCH FORM --}}
@@ -40,6 +48,18 @@
                        value="{{ $search ?? '' }}"
                        placeholder="Cari nama / ID..."
                        class="w-full sm:w-60 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 shadow-xs focus:border-slate-500 focus:outline-none">
+
+                <select
+                    name="leave_year"
+                    class="w-full sm:w-32 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 shadow-xs focus:border-slate-500 focus:outline-none"
+                    onchange="this.form.submit()"
+                >
+                    @for ($year = now()->year; $year >= now()->year - 3; $year--)
+                        <option value="{{ $year }}" @selected(($leaveYear ?? now()->year) == $year)>
+                            {{ $year }}
+                        </option>
+                    @endfor
+                </select>
 
                 <select name="status" class="w-full sm:w-40 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 shadow-xs focus:border-slate-500 focus:outline-none">
                     <option value="">Semua Status</option>
@@ -106,6 +126,60 @@
                         </span>
                     </div>
 
+                    @php
+                        $annualBalance =
+                            $employee->employment_group === 'asia'
+                                ? $employee->leaveBalances->first()
+                                : null;
+                    @endphp
+
+                    @if ($employee->employment_group === 'asia')
+                        <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                                        Saldo Cuti {{ $leaveYear }}
+                                    </div>
+                                    <div class="mt-1 text-xs font-medium text-emerald-700">
+                                        Cuti tahunan karyawan ASIA
+                                    </div>
+                                </div>
+
+                                <div class="text-right">
+                                    <div class="text-2xl font-black text-emerald-800">
+                                        {{ $annualBalance?->remaining ?? 12 }}
+                                    </div>
+                                    <div class="text-[10px] font-bold text-emerald-600">
+                                        hari tersisa
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 grid grid-cols-3 gap-2">
+                                <div class="rounded-lg bg-white/80 p-2 text-center">
+                                    <div class="text-[10px] font-bold text-slate-400">Jatah</div>
+                                    <div class="mt-0.5 text-sm font-black text-slate-800">
+                                        {{ $annualBalance?->entitlement ?? 12 }}
+                                    </div>
+                                </div>
+
+                                <div class="rounded-lg bg-white/80 p-2 text-center">
+                                    <div class="text-[10px] font-bold text-slate-400">Terpakai</div>
+                                    <div class="mt-0.5 text-sm font-black text-amber-700">
+                                        {{ $annualBalance?->used ?? 0 }}
+                                    </div>
+                                </div>
+
+                                <div class="rounded-lg bg-white/80 p-2 text-center">
+                                    <div class="text-[10px] font-bold text-slate-400">Sisa</div>
+                                    <div class="mt-0.5 text-sm font-black text-emerald-700">
+                                        {{ $annualBalance?->remaining ?? 12 }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="flex items-center justify-between pt-3 border-t border-[#e2e8f0]">
                         <span id="mobilePasswordBadge-{{ $employee->id }}" class="rounded-lg px-2.5 py-1 text-xs font-extrabold border {{ !$hasUser ? 'bg-rose-50 text-rose-700 border-rose-200' : ($mustChangePassword ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200') }}">
                             {{ !$hasUser ? 'Akun Tidak Ada' : ($mustChangePassword ? 'Wajib Ganti Password' : 'Password Aktif') }}
@@ -136,6 +210,7 @@
                         <th class="px-5 py-3.5 text-left">Kategori / Group</th>
                         <th class="px-5 py-3.5 text-left">Login (ID)</th>
                         <th class="px-5 py-3.5 text-left">Status Password</th>
+                        <th class="px-5 py-3.5 text-left">Saldo Cuti {{ $leaveYear }}</th>
                         <th class="px-5 py-3.5 text-left">Keaktifan</th>
                         <th class="px-5 py-3.5 text-right">Aksi</th>
                     </tr>
@@ -196,6 +271,42 @@
                                     {{ !$hasUser ? 'Akun Tidak Ada' : ($mustChangePassword ? 'Wajib Ganti' : 'Aktif') }}
                                 </span>
                             </td>
+                            @php
+                                $annualBalance =
+                                    $employee->employment_group === 'asia'
+                                        ? $employee->leaveBalances->first()
+                                        : null;
+                            @endphp
+
+                            <td class="px-5 py-4">
+                                @if ($employee->employment_group === 'asia')
+                                    <div class="min-w-[150px]">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-lg font-black text-emerald-700">
+                                                {{ $annualBalance?->remaining ?? 12 }}
+                                            </span>
+                                            <span class="text-[11px] font-bold text-slate-500">
+                                                hari sisa
+                                            </span>
+                                        </div>
+
+                                        <div class="mt-1 text-[10px] font-semibold text-slate-400">
+                                            Jatah {{ $annualBalance?->entitlement ?? 12 }}
+                                            •
+                                            Terpakai {{ $annualBalance?->used ?? 0 }}
+                                        </div>
+                                    </div>
+                                @elseif ($employee->employment_group === 'outsourcing')
+                                    <span class="text-xs font-bold text-slate-400">
+                                        Tidak ada annual
+                                    </span>
+                                @else
+                                    <span class="text-xs font-bold text-slate-400">
+                                        -
+                                    </span>
+                                @endif
+                            </td>
+
                             <td class="px-5 py-4">
                                 <span class="rounded-lg px-2.5 py-1 text-xs font-extrabold border {{ $employee->is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
                                     {{ $employee->is_active ? 'Aktif' : 'Nonaktif' }}
@@ -212,7 +323,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-5 py-8 text-center text-slate-500 font-medium">Data karyawan tidak ditemukan.</td>
+                            <td colspan="8" class="px-5 py-8 text-center text-slate-500 font-medium">Data karyawan tidak ditemukan.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -328,6 +439,93 @@
 
                     </div>
 
+                    @php
+                        $annualBalance =
+                            $employee->employment_group === 'asia'
+                                ? $employee->leaveBalances->first()
+                                : null;
+                    @endphp
+
+                    {{-- SALDO CUTI TAHUNAN --}}
+                    <div class="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4">
+
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <span class="block text-[11px] font-bold uppercase text-slate-500">
+                                    Saldo Cuti Tahunan {{ $leaveYear }}
+                                </span>
+
+                                @if ($employee->employment_group === 'asia')
+                                    <span class="mt-1 block text-xs font-medium text-slate-500">
+                                        Berlaku untuk karyawan ASIA.
+                                    </span>
+                                @elseif ($employee->employment_group === 'outsourcing')
+                                    <span class="mt-1 block text-xs font-medium text-orange-600">
+                                        Karyawan outsourcing tidak memiliki saldo cuti tahunan.
+                                    </span>
+                                @else
+                                    <span class="mt-1 block text-xs font-medium text-slate-400">
+                                        Group karyawan belum tersinkron.
+                                    </span>
+                                @endif
+                            </div>
+
+                            @if ($employee->employment_group === 'asia')
+                                <div class="text-right">
+                                    <div class="text-3xl font-black text-emerald-700">
+                                        {{ $annualBalance?->remaining ?? 12 }}
+                                    </div>
+                                    <div class="text-[10px] font-bold text-emerald-600">
+                                        HARI TERSISA
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        @if ($employee->employment_group === 'asia')
+                            <div class="mt-4 grid grid-cols-3 gap-2">
+
+                                <div class="rounded-xl border border-slate-200 bg-white p-3 text-center">
+                                    <div class="text-[10px] font-bold uppercase text-slate-400">
+                                        Jatah
+                                    </div>
+                                    <div class="mt-1 text-lg font-black text-slate-900">
+                                        {{ $annualBalance?->entitlement ?? 12 }}
+                                    </div>
+                                    <div class="text-[10px] font-semibold text-slate-400">
+                                        hari
+                                    </div>
+                                </div>
+
+                                <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-center">
+                                    <div class="text-[10px] font-bold uppercase text-amber-600">
+                                        Terpakai
+                                    </div>
+                                    <div class="mt-1 text-lg font-black text-amber-700">
+                                        {{ $annualBalance?->used ?? 0 }}
+                                    </div>
+                                    <div class="text-[10px] font-semibold text-amber-500">
+                                        hari
+                                    </div>
+                                </div>
+
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-center">
+                                    <div class="text-[10px] font-bold uppercase text-emerald-600">
+                                        Sisa
+                                    </div>
+                                    <div class="mt-1 text-lg font-black text-emerald-700">
+                                        {{ $annualBalance?->remaining ?? 12 }}
+                                    </div>
+                                    <div class="text-[10px] font-semibold text-emerald-500">
+                                        hari
+                                    </div>
+                                </div>
+
+                            </div>
+                        @endif
+
+                    </div>
+
                     {{-- RESET PASSWORD SECTION --}}
                     <div class="p-4 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex items-center justify-between gap-3">
                         <div>
@@ -349,6 +547,7 @@
 
                             <form id="resetForm-{{ $employee->id }}" action="{{ route('hrd.employees.reset-password', $employee) }}" method="POST" class="hidden">
                                 @csrf
+                                <input type="hidden" name="leave_year" value="{{ $leaveYear }}">
                             </form>
                         @endif
                     </div>

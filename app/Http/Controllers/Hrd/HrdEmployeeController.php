@@ -23,8 +23,30 @@ class HrdEmployeeController extends Controller
             (string) $request->get('status', '')
         );
 
+        $leaveYear = (int) $request->get(
+            'leave_year',
+            now()->year
+        );
+
+        if (
+            $leaveYear < 2000
+            ||
+            $leaveYear > ((int) now()->year + 1)
+        ) {
+            $leaveYear = (int) now()->year;
+        }
+
         $employees = Employee::query()
-            ->with('user')
+            ->with([
+                'user',
+
+                'leaveBalances' =>
+                    fn ($query) =>
+                        $query->where(
+                            'year',
+                            $leaveYear
+                        ),
+            ])
 
             ->when(
                 $search !== '',
@@ -84,6 +106,48 @@ class HrdEmployeeController extends Controller
             ->paginate(25)
             ->withQueryString();
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | PASTIKAN KARYAWAN ASIA PUNYA SALDO TAHUN TERPILIH
+        |--------------------------------------------------------------------------
+        |
+        | Jika row saldo belum ada, helper leaveBalanceForYear() akan membuat:
+        | entitlement = 12
+        | used        = 0
+        | remaining   = 12
+        |
+        | Outsourcing tidak dibuatkan saldo annual.
+        |
+        */
+
+        foreach ($employees->getCollection() as $employee) {
+
+            if (! $employee->isAsiaEmployee()) {
+                continue;
+            }
+
+            $balance =
+                $employee
+                    ->leaveBalances
+                    ->first();
+
+            if (! $balance) {
+
+                $balance =
+                    $employee
+                        ->leaveBalanceForYear(
+                            $leaveYear
+                        );
+
+                $employee->setRelation(
+                    'leaveBalances',
+                    collect([$balance])
+                );
+            }
+        }
+
+
         $summary = [
             'total' =>
                 Employee::count(),
@@ -111,7 +175,20 @@ class HrdEmployeeController extends Controller
                             )
                     )
                     ->count(),
+
+            'asia' =>
+                Employee::where(
+                    'employment_group',
+                    'asia'
+                )->count(),
+
+            'outsourcing' =>
+                Employee::where(
+                    'employment_group',
+                    'outsourcing'
+                )->count(),
         ];
+
 
         return view(
             'hrd.employees.index',
@@ -119,21 +196,28 @@ class HrdEmployeeController extends Controller
                 'employees',
                 'summary',
                 'search',
-                'status'
+                'status',
+                'leaveYear'
             )
         );
     }
+
 
     public function resetPassword(
         Request $request,
         Employee $employee
     ): RedirectResponse|JsonResponse {
+
         $employee->load('user');
 
-        $user = $employee->user;
+        $user =
+            $employee->user;
+
 
         if (! $user) {
+
             if ($request->expectsJson()) {
+
                 return response()->json(
                     [
                         'message' =>
@@ -143,14 +227,18 @@ class HrdEmployeeController extends Controller
                 );
             }
 
+
             return back()->with(
                 'error',
                 'Akun login karyawan belum tersedia.'
             );
         }
 
+
         if ($user->role !== 'karyawan') {
+
             if ($request->expectsJson()) {
+
                 return response()->json(
                     [
                         'message' =>
@@ -160,11 +248,13 @@ class HrdEmployeeController extends Controller
                 );
             }
 
+
             return back()->with(
                 'error',
                 'Password akun HRD/Admin tidak dapat direset dari halaman ini.'
             );
         }
+
 
         $temporaryPassword =
             (string) random_int(
@@ -172,11 +262,13 @@ class HrdEmployeeController extends Controller
                 999999
             );
 
+
         DB::transaction(
             function () use (
                 $user,
                 $temporaryPassword
             ) {
+
                 $user->update([
                     'password' =>
                         Hash::make(
@@ -189,6 +281,7 @@ class HrdEmployeeController extends Controller
             }
         );
 
+
         $result = [
             'nama' =>
                 $employee->nama,
@@ -200,7 +293,9 @@ class HrdEmployeeController extends Controller
                 $temporaryPassword,
         ];
 
+
         if ($request->expectsJson()) {
+
             return response()->json([
                 'success' => true,
 
@@ -212,12 +307,19 @@ class HrdEmployeeController extends Controller
             ]);
         }
 
+
         return redirect()
             ->route(
                 'hrd.employees.index',
                 [
                     'search' =>
                         $employee->employee_code,
+
+                    'leave_year' =>
+                        $request->get(
+                            'leave_year',
+                            now()->year
+                        ),
                 ]
             )
             ->with(
