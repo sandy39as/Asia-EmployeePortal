@@ -82,6 +82,7 @@ Route::middleware([
             KabagController::class
         )->except('show');
 
+
         Route::get(
             '/kabag-mapping',
             [KabagMappingController::class, 'index']
@@ -102,18 +103,21 @@ Route::middleware([
             [KabagMappingController::class, 'remove']
         )->name('kabag-mapping.remove');
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | MASTER CUTI KHUSUS
+        |--------------------------------------------------------------------------
+        */
+
         Route::resource(
-            '/master/special-leave-types',
+            'special-leave-types',
             SpecialLeaveTypeController::class
-        )
-            ->names(
-                'master.special-leave-types'
-            )
-            ->except([
-                'create',
-                'edit',
-                'show',
-            ]);
+        )->except([
+            'create',
+            'edit',
+            'show',
+        ]);
 
     });
 
