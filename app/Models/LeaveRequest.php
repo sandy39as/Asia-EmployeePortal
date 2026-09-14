@@ -49,6 +49,7 @@ class LeaveRequest extends Model
         'leave_category',
         'special_leave_type_id',
         'leave_days',
+        'permission_type_id',
     ];
 
     protected function casts(): array
@@ -200,6 +201,13 @@ class LeaveRequest extends Model
     {
         return $this->belongsTo(
             SpecialLeaveType::class
+        );
+    }
+
+    public function permissionType()
+    {
+        return $this->belongsTo(
+            PermissionType::class
         );
     }
 

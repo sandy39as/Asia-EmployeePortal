@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use App\Models\PermissionType;
 
 class LeaveRequestController extends Controller
 {
@@ -51,6 +52,7 @@ class LeaveRequestController extends Controller
                 'rejectedBy',
 
                 'specialLeaveType',
+                'permissionType',
             ])
             ->where(
                 'employee_id',
@@ -95,6 +97,22 @@ class LeaveRequestController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | MASTER JENIS IZIN
+        |--------------------------------------------------------------------------
+        */
+
+        $permissionTypes =
+            PermissionType::query()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->orderBy('name')
+                ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
         | SALDO CUTI TAHUNAN
         |--------------------------------------------------------------------------
         |
@@ -120,6 +138,7 @@ class LeaveRequestController extends Controller
                 'status',
                 'jenis',
                 'specialLeaveTypes',
+                'permissionTypes',
                 'leaveBalance'
             )
         );
@@ -148,6 +167,16 @@ class LeaveRequestController extends Controller
                 ->get();
 
 
+        $permissionTypes =
+            PermissionType::query()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->orderBy('name')
+                ->get();
+
+
         $leaveBalance = null;
 
         if ($employee->isAsiaEmployee()) {
@@ -163,6 +192,7 @@ class LeaveRequestController extends Controller
             compact(
                 'employee',
                 'specialLeaveTypes',
+                'permissionTypes',
                 'leaveBalance'
             )
         );
@@ -283,6 +313,12 @@ class LeaveRequestController extends Controller
                         'exists:special_leave_types,id',
                     ],
 
+                    'permission_type_id' => [
+                        'nullable',
+                        'integer',
+                        'exists:permission_types,id',
+                    ],
+
                     'durasi_type' => [
                         'required',
                         'in:full_day,hourly',
@@ -335,6 +371,9 @@ class LeaveRequestController extends Controller
                     'special_leave_type_id.exists' =>
                         'Jenis cuti khusus tidak ditemukan.',
 
+                    'permission_type_id.exists' =>
+                        'Jenis izin tidak ditemukan.',
+
                     'durasi_type.required' =>
                         'Durasi pengajuan wajib dipilih.',
 
@@ -363,6 +402,61 @@ class LeaveRequestController extends Controller
                         'Ukuran lampiran maksimal 5 MB.',
                 ]
             );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | LOGIC JENIS IZIN
+        |--------------------------------------------------------------------------
+        */
+
+        $permissionTypeId = null;
+
+        if (
+            $validated['jenis']
+            === 'izin'
+        ) {
+
+            if (
+                blank(
+                    $validated[
+                        'permission_type_id'
+                    ]
+                    ?? null
+                )
+            ) {
+                throw ValidationException::withMessages([
+                    'permission_type_id' =>
+                        'Jenis izin wajib dipilih.',
+                ]);
+            }
+
+
+            $permissionType =
+                PermissionType::query()
+                    ->whereKey(
+                        $validated[
+                            'permission_type_id'
+                        ]
+                    )
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->first();
+
+
+            if (! $permissionType) {
+                throw ValidationException::withMessages([
+                    'permission_type_id' =>
+                        'Jenis izin tidak aktif atau tidak ditemukan.',
+                ]);
+            }
+
+
+            $permissionTypeId =
+                $permissionType->id;
+        }
 
 
         /*
@@ -606,6 +700,20 @@ class LeaveRequestController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | BUKAN IZIN
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $validated['jenis']
+            !== 'izin'
+        ) {
+            $permissionTypeId = null;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
         | IZIN BEBERAPA JAM
         |--------------------------------------------------------------------------
         */
@@ -737,6 +845,15 @@ class LeaveRequestController extends Controller
 
                     /*
                     |--------------------------------------------------------------------------
+                    | DATA IZIN
+                    |--------------------------------------------------------------------------
+                    */
+
+                    'permission_type_id' =>
+                        $permissionTypeId,
+
+                    /*
+                    |--------------------------------------------------------------------------
                     | DATA CUTI
                     |--------------------------------------------------------------------------
                     */
@@ -858,6 +975,12 @@ class LeaveRequestController extends Controller
 
                     'jenis' =>
                         $leaveRequest->jenis,
+
+                    'permission_type_id' =>
+                        $leaveRequest->permission_type_id,
+
+                    'permission_type_name' =>
+                        $leaveRequest->permissionType?->name,
 
                     'leave_category' =>
                         $leaveRequest->leave_category,

@@ -133,6 +133,12 @@
                                     </span>
                                 @endif
 
+                                @if ($item->jenis === 'izin' && $item->permissionType)
+                                    <span class="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-extrabold text-sky-700">
+                                        {{ $item->permissionType->name }}
+                                    </span>
+                                @endif
+
                                 <span class="text-sm sm:text-base font-extrabold text-slate-900">
 
                                     {{ $item->tanggal_mulai->format('d M Y') }}
@@ -430,6 +436,61 @@
 
                         </div>
 
+                    </div>
+
+
+                    {{-- ===================================================== --}}
+                    {{-- DETAIL JENIS IZIN --}}
+                    {{-- ===================================================== --}}
+                    <div
+                        id="modalPermissionTypeFields"
+                        class="hidden space-y-3 rounded-2xl border border-sky-200 bg-sky-50/50 p-4"
+                    >
+                        <div>
+                            <div class="text-xs font-extrabold uppercase tracking-wider text-sky-700">
+                                Jenis Izin
+                            </div>
+
+                            <div class="mt-1 text-xs font-medium text-slate-500">
+                                Pilih jenis izin yang sesuai dengan pengajuan.
+                            </div>
+                        </div>
+
+
+                        @if ($permissionTypes->isNotEmpty())
+
+                            <select
+                                name="permission_type_id"
+                                id="modalPermissionType"
+                                class="w-full rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-sky-500 focus:outline-none"
+                            >
+                                <option value="">
+                                    -- Pilih Jenis Izin --
+                                </option>
+
+                                @foreach ($permissionTypes as $permissionType)
+                                    <option
+                                        value="{{ $permissionType->id }}"
+                                        data-description="{{ $permissionType->description }}"
+                                    >
+                                        {{ $permissionType->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+
+
+                            <div
+                                id="modalPermissionTypeInfo"
+                                class="hidden rounded-xl border border-sky-100 bg-white p-3 text-xs leading-5 text-slate-600"
+                            ></div>
+
+                        @else
+
+                            <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-700">
+                                Belum ada master jenis izin aktif. Hubungi administrator/HRD.
+                            </div>
+
+                        @endif
                     </div>
 
 
@@ -1250,6 +1311,21 @@
                         </div>
 
 
+                        @if ($item->jenis === 'izin')
+                            <div class="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+
+                                <span class="text-[11px] text-slate-500 font-bold uppercase block">
+                                    Jenis Izin
+                                </span>
+
+                                <span class="text-slate-900 font-extrabold text-sm mt-1 block">
+                                    {{ $item->permissionType?->name ?? '-' }}
+                                </span>
+
+                            </div>
+                        @endif
+
+
                         @if ($item->jenis === 'cuti')
                             <div class="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
 
@@ -1779,6 +1855,21 @@
                     'leaveAttachmentName'
                 );
 
+            const permissionTypeFields =
+                document.getElementById(
+                    'modalPermissionTypeFields'
+                );
+
+            const permissionTypeSelect =
+                document.getElementById(
+                    'modalPermissionType'
+                );
+
+            const permissionTypeInfo =
+                document.getElementById(
+                    'modalPermissionTypeInfo'
+                );
+
             const leaveCategoryFields =
                 document.getElementById(
                     'modalLeaveCategoryFields'
@@ -2155,6 +2246,64 @@
             }
 
 
+            function refreshPermissionTypeUI() {
+
+                const selectedJenis =
+                    document.querySelector(
+                        'input[name="jenis"]:checked'
+                    )?.value;
+
+
+                if (
+                    selectedJenis
+                    === 'izin'
+                ) {
+
+                    permissionTypeFields
+                        ?.classList
+                        .remove(
+                            'hidden'
+                        );
+
+                    if (
+                        permissionTypeSelect
+                    ) {
+                        permissionTypeSelect.required =
+                            true;
+                    }
+
+                } else {
+
+                    permissionTypeFields
+                        ?.classList
+                        .add(
+                            'hidden'
+                        );
+
+                    if (
+                        permissionTypeSelect
+                    ) {
+                        permissionTypeSelect.required =
+                            false;
+
+                        permissionTypeSelect.value =
+                            '';
+                    }
+
+                    if (
+                        permissionTypeInfo
+                    ) {
+                        permissionTypeInfo.classList.add(
+                            'hidden'
+                        );
+
+                        permissionTypeInfo.textContent =
+                            '';
+                    }
+                }
+            }
+
+
             function refreshLeaveCategoryUI() {
 
                 const selectedJenis =
@@ -2316,7 +2465,11 @@
                 radio => {
                     radio.addEventListener(
                         'change',
-                        refreshLeaveCategoryUI
+                        () => {
+                            refreshPermissionTypeUI();
+                            refreshPermissionTypeUI();
+            refreshLeaveCategoryUI();
+                        }
                     );
                 }
             );
@@ -2328,6 +2481,59 @@
                         'change',
                         refreshLeaveCategoryUI
                     );
+                }
+            );
+
+
+            permissionTypeSelect?.addEventListener(
+                'change',
+                () => {
+
+                    const option =
+                        permissionTypeSelect
+                            .options[
+                                permissionTypeSelect.selectedIndex
+                            ];
+
+                    const description =
+                        option?.dataset
+                            ?.description;
+
+
+                    if (
+                        !permissionTypeSelect.value
+                    ) {
+
+                        permissionTypeInfo
+                            ?.classList
+                            .add(
+                                'hidden'
+                            );
+
+                        if (
+                            permissionTypeInfo
+                        ) {
+                            permissionTypeInfo.textContent =
+                                '';
+                        }
+
+                        return;
+                    }
+
+
+                    if (
+                        permissionTypeInfo
+                    ) {
+
+                        permissionTypeInfo.textContent =
+                            description
+                            || 'Jenis izin dipilih.';
+
+                        permissionTypeInfo.classList.remove(
+                            'hidden'
+                        );
+                    }
+
                 }
             );
 
@@ -2550,6 +2756,27 @@
                         document.querySelector(
                             'input[name="leave_category"]:checked'
                         )?.value;
+
+                    if (
+                        selectedJenis === 'izin'
+                        &&
+                        (
+                            !permissionTypeSelect
+                            ||
+                            !permissionTypeSelect.value
+                        )
+                    ) {
+
+                        errorBox.innerHTML =
+                            '<div>• Jenis izin wajib dipilih.</div>';
+
+                        errorBox.classList.remove(
+                            'hidden'
+                        );
+
+                        return;
+                    }
+
 
                     if (
                         selectedJenis === 'cuti'
