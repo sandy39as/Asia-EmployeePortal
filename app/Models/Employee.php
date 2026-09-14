@@ -65,23 +65,6 @@ class Employee extends Model
         );
     }
 
-    public function leaveBalanceForYear(?int $year = null)
-    {
-        $year ??= now()->year;
-
-        return $this->leaveBalances()
-            ->firstOrCreate(
-                [
-                    'year' => $year,
-                ],
-                [
-                    'entitlement' => 12,
-                    'used' => 0,
-                    'remaining' => 12,
-                ]
-            );
-    }
-
     public function isAsiaEmployee(): bool
     {
         return $this->employment_group === 'asia';
