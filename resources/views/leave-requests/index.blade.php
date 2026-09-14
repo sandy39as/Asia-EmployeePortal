@@ -556,6 +556,11 @@
                             Saldo baru berkurang setelah HRD menyetujui.
                         </div>
 
+                        <div
+                            id="modalLeavePeriodInfo"
+                            class="hidden rounded-xl border p-3 text-xs font-bold"
+                        ></div>
+
                     </div>
 
 
@@ -1799,6 +1804,11 @@
                     'modalAnnualLeaveInfo'
                 );
 
+            const leavePeriodInfo =
+                document.getElementById(
+                    'modalLeavePeriodInfo'
+                );
+
             const jenisRadios =
                 document.querySelectorAll(
                     'input[name="jenis"]'
@@ -1808,6 +1818,341 @@
                 document.querySelectorAll(
                     'input[name="leave_category"]'
                 );
+
+
+            function parseDateOnly(value) {
+                if (!value) return null;
+
+                const parts = value.split('-').map(Number);
+
+                if (parts.length !== 3) {
+                    return null;
+                }
+
+                return new Date(
+                    parts[0],
+                    parts[1] - 1,
+                    parts[2]
+                );
+            }
+
+
+            function formatDateOnly(date) {
+                if (!(date instanceof Date)) {
+                    return '';
+                }
+
+                const year =
+                    date.getFullYear();
+
+                const month =
+                    String(
+                        date.getMonth() + 1
+                    ).padStart(2, '0');
+
+                const day =
+                    String(
+                        date.getDate()
+                    ).padStart(2, '0');
+
+                return `${year}-${month}-${day}`;
+            }
+
+
+            function addDaysToDate(
+                dateString,
+                days
+            ) {
+                const date =
+                    parseDateOnly(
+                        dateString
+                    );
+
+                if (!date) {
+                    return '';
+                }
+
+                date.setDate(
+                    date.getDate()
+                    + Number(days || 0)
+                );
+
+                return formatDateOnly(
+                    date
+                );
+            }
+
+
+            function calculateInclusiveDays(
+                startValue,
+                endValue
+            ) {
+                const start =
+                    parseDateOnly(
+                        startValue
+                    );
+
+                const end =
+                    parseDateOnly(
+                        endValue
+                    );
+
+                if (!start || !end) {
+                    return null;
+                }
+
+                const diff =
+                    Math.round(
+                        (
+                            end.getTime()
+                            -
+                            start.getTime()
+                        )
+                        /
+                        86400000
+                    );
+
+                return diff + 1;
+            }
+
+
+            function getSelectedSpecialMaxDays() {
+                if (!specialLeaveSelect?.value) {
+                    return null;
+                }
+
+                const option =
+                    specialLeaveSelect
+                        .options[
+                            specialLeaveSelect.selectedIndex
+                        ];
+
+                const days =
+                    Number(
+                        option?.dataset
+                            ?.defaultDays
+                        || 0
+                    );
+
+                return days > 0
+                    ? days
+                    : null;
+            }
+
+
+            function applySpecialLeaveDateLimit(
+                autoFix = false
+            ) {
+                const selectedJenis =
+                    document.querySelector(
+                        'input[name="jenis"]:checked'
+                    )?.value;
+
+                const selectedCategory =
+                    document.querySelector(
+                        'input[name="leave_category"]:checked'
+                    )?.value;
+
+                if (
+                    selectedJenis !== 'cuti'
+                    ||
+                    selectedCategory !== 'special'
+                    ||
+                    !mulai?.value
+                ) {
+                    if (selesai) {
+                        selesai.removeAttribute('max');
+                    }
+
+                    return;
+                }
+
+                const maxDays =
+                    getSelectedSpecialMaxDays();
+
+                if (!maxDays) {
+                    selesai?.removeAttribute('max');
+                    return;
+                }
+
+                const maxDate =
+                    addDaysToDate(
+                        mulai.value,
+                        maxDays - 1
+                    );
+
+                if (selesai) {
+                    selesai.min =
+                        mulai.value;
+
+                    selesai.max =
+                        maxDate;
+
+                    if (
+                        !selesai.value
+                        ||
+                        selesai.value
+                            <
+                            mulai.value
+                    ) {
+                        selesai.value =
+                            mulai.value;
+                    }
+
+                    if (
+                        autoFix
+                        &&
+                        selesai.value
+                            >
+                            maxDate
+                    ) {
+                        selesai.value =
+                            maxDate;
+                    }
+
+                    if (
+                        maxDays === 1
+                    ) {
+                        selesai.value =
+                            mulai.value;
+                    }
+                }
+            }
+
+
+            function refreshLeavePeriodInfo() {
+                if (!leavePeriodInfo) {
+                    return;
+                }
+
+                const selectedJenis =
+                    document.querySelector(
+                        'input[name="jenis"]:checked'
+                    )?.value;
+
+                const selectedCategory =
+                    document.querySelector(
+                        'input[name="leave_category"]:checked'
+                    )?.value;
+
+                if (
+                    selectedJenis !== 'cuti'
+                    ||
+                    !mulai?.value
+                    ||
+                    !selesai?.value
+                ) {
+                    leavePeriodInfo.classList.add(
+                        'hidden'
+                    );
+
+                    return;
+                }
+
+                const selectedDays =
+                    calculateInclusiveDays(
+                        mulai.value,
+                        selesai.value
+                    );
+
+                if (
+                    !selectedDays
+                    ||
+                    selectedDays < 1
+                ) {
+                    leavePeriodInfo.className =
+                        'rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700';
+
+                    leavePeriodInfo.textContent =
+                        'Periode tanggal tidak valid.';
+
+                    leavePeriodInfo.classList.remove(
+                        'hidden'
+                    );
+
+                    return;
+                }
+
+                if (
+                    selectedCategory === 'special'
+                ) {
+                    const maxDays =
+                        getSelectedSpecialMaxDays();
+
+                    if (!maxDays) {
+                        leavePeriodInfo.classList.add(
+                            'hidden'
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        selectedDays > maxDays
+                    ) {
+                        leavePeriodInfo.className =
+                            'rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700';
+
+                        leavePeriodInfo.innerHTML =
+                            `Periode dipilih: <strong>${selectedDays} hari</strong>. `
+                            +
+                            `Melebihi batas maksimal <strong>${maxDays} hari</strong>.`;
+                    } else {
+                        leavePeriodInfo.className =
+                            'rounded-xl border border-violet-200 bg-violet-50 p-3 text-xs font-bold text-violet-700';
+
+                        leavePeriodInfo.innerHTML =
+                            `Periode dipilih: <strong>${selectedDays} hari</strong> dari maksimal `
+                            +
+                            `<strong>${maxDays} hari</strong>.`;
+                    }
+
+                    leavePeriodInfo.classList.remove(
+                        'hidden'
+                    );
+
+                    return;
+                }
+
+                if (
+                    selectedCategory === 'annual'
+                ) {
+                    const remaining =
+                        Number(
+                            @json((int) ($leaveBalance?->remaining ?? 0))
+                        );
+
+                    if (
+                        selectedDays > remaining
+                    ) {
+                        leavePeriodInfo.className =
+                            'rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700';
+
+                        leavePeriodInfo.innerHTML =
+                            `Periode dipilih: <strong>${selectedDays} hari</strong>. `
+                            +
+                            `Sisa cuti tahunan hanya <strong>${remaining} hari</strong>.`;
+                    } else {
+                        leavePeriodInfo.className =
+                            'rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-700';
+
+                        leavePeriodInfo.innerHTML =
+                            `Periode dipilih: <strong>${selectedDays} hari</strong>. `
+                            +
+                            `Sisa saldo saat ini <strong>${remaining} hari</strong>.`;
+                    }
+
+                    leavePeriodInfo.classList.remove(
+                        'hidden'
+                    );
+
+                    return;
+                }
+
+                leavePeriodInfo.classList.add(
+                    'hidden'
+                );
+            }
 
 
             function refreshLeaveCategoryUI() {
@@ -1958,6 +2303,12 @@
                         specialLeaveSelect.required = false;
                     }
                 }
+
+                applySpecialLeaveDateLimit(
+                    true
+                );
+
+                refreshLeavePeriodInfo();
             }
 
 
@@ -2011,6 +2362,12 @@
                             specialLeaveInfo.textContent = '';
                         }
 
+                        selesai?.removeAttribute(
+                            'max'
+                        );
+
+                        refreshLeavePeriodInfo();
+
                         return;
                     }
 
@@ -2018,7 +2375,7 @@
                     if (specialLeaveInfo) {
 
                         specialLeaveInfo.innerHTML =
-                            `<strong>Default ${days || '-'} hari.</strong>`
+                            `<strong>Maksimal ${days || '-'} hari.</strong>`
                             +
                             (
                                 description
@@ -2030,6 +2387,12 @@
                             'hidden'
                         );
                     }
+
+                    applySpecialLeaveDateLimit(
+                        true
+                    );
+
+                    refreshLeavePeriodInfo();
 
                 }
             );
@@ -2082,6 +2445,12 @@
                             false;
                     }
 
+                    applySpecialLeaveDateLimit(
+                        true
+                    );
+
+                    refreshLeavePeriodInfo();
+
                 }
             );
 
@@ -2101,6 +2470,27 @@
                         selesai.value =
                             mulai.value;
                     }
+
+
+                    applySpecialLeaveDateLimit(
+                        true
+                    );
+
+                    refreshLeavePeriodInfo();
+
+                }
+            );
+
+
+            selesai?.addEventListener(
+                'change',
+                () => {
+
+                    applySpecialLeaveDateLimit(
+                        false
+                    );
+
+                    refreshLeavePeriodInfo();
 
                 }
             );
@@ -2149,6 +2539,51 @@
                     errorBox.classList.add(
                         'hidden'
                     );
+
+
+                    const selectedJenis =
+                        document.querySelector(
+                            'input[name="jenis"]:checked'
+                        )?.value;
+
+                    const selectedCategory =
+                        document.querySelector(
+                            'input[name="leave_category"]:checked'
+                        )?.value;
+
+                    if (
+                        selectedJenis === 'cuti'
+                        &&
+                        selectedCategory === 'special'
+                    ) {
+                        const maxDays =
+                            getSelectedSpecialMaxDays();
+
+                        const selectedDays =
+                            calculateInclusiveDays(
+                                mulai?.value,
+                                selesai?.value
+                            );
+
+                        if (
+                            maxDays
+                            &&
+                            selectedDays
+                            &&
+                            selectedDays > maxDays
+                        ) {
+                            errorBox.innerHTML =
+                                `<div>• Cuti khusus yang dipilih maksimal ${maxDays} hari. Periode yang dipilih adalah ${selectedDays} hari.</div>`;
+
+                            errorBox.classList.remove(
+                                'hidden'
+                            );
+
+                            refreshLeavePeriodInfo();
+
+                            return;
+                        }
+                    }
 
 
                     const originalText =

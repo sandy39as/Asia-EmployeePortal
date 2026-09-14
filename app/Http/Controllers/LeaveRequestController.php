@@ -567,6 +567,27 @@ class LeaveRequestController extends Controller
 
                 $specialLeaveTypeId =
                     $specialLeaveType->id;
+
+                $maximumDays =
+                    (int) $specialLeaveType->default_days;
+
+                if (
+                    $leaveDays
+                    >
+                    $maximumDays
+                ) {
+                    throw ValidationException::withMessages([
+                        'tanggal_selesai' =>
+                            $specialLeaveType->name
+                            . ' maksimal '
+                            . $maximumDays
+                            . ' hari. '
+                            . 'Periode yang dipilih adalah '
+                            . $leaveDays
+                            . ' hari.',
+                    ]);
+                }
+
             }
 
         } else {
