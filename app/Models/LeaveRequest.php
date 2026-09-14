@@ -46,6 +46,9 @@ class LeaveRequest extends Model
         'hrd_rejected_at',
         'hrd_rejection_reason',
         'hrd_action_source',
+        'leave_category',
+        'special_leave_type_id',
+        'leave_days',
     ];
 
     protected function casts(): array
@@ -186,6 +189,13 @@ class LeaveRequest extends Model
         }
 
         return 'Menunggu Kabag';
+    }
+
+    public function specialLeaveType()
+    {
+        return $this->belongsTo(
+            SpecialLeaveType::class
+        );
     }
 
 }

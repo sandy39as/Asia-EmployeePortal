@@ -17,10 +17,6 @@ class EnsurePasswordChanged
 
         $user = Auth::user();
 
-        /*
-         * Route ini harus tetap bisa dibuka supaya
-         * tidak terjadi redirect loop.
-         */
         if (
             $request->routeIs('password.first.*') ||
             $request->routeIs('logout')

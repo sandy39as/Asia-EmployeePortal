@@ -136,11 +136,7 @@ class KabagMappingController extends Controller
             $kabag,
             $employeeId
         ) {
-            /*
-             * Satu karyawan hanya boleh punya satu Kabag.
-             * Kalau sebelumnya sudah ada di Kabag lain,
-             * pindahkan ke Kabag yang dipilih sekarang.
-             */
+
             DB::table('kabag_employee')
                 ->where(
                     'employee_id',

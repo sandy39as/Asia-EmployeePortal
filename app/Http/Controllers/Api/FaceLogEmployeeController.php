@@ -60,6 +60,22 @@ class FaceLogEmployeeController extends Controller
                 'max:255',
             ],
 
+            'employees.*.employment_group' => [
+                'nullable',
+                'in:asia,outsourcing',
+            ],
+
+            'employees.*.kategori_karyawan_id' => [
+                'nullable',
+                'integer',
+            ],
+
+            'employees.*.kategori_karyawan_name' => [
+                'nullable',
+                'string',
+                'max:150',
+            ],
+
             'employees.*.is_active' => [
                 'nullable',
                 'boolean',
@@ -140,6 +156,18 @@ class FaceLogEmployeeController extends Controller
                                 $row['status_kerja']
                                 ?? null,
 
+                            'employment_group' =>
+                                $row['employment_group']
+                                ?? null,
+
+                            'source_kategori_karyawan_id' =>
+                                $row['kategori_karyawan_id']
+                                ?? null,
+
+                            'source_kategori_karyawan_name' =>
+                                $row['kategori_karyawan_name']
+                                ?? null,
+
                             'is_active' =>
                                 (bool) (
                                     $row['is_active']
@@ -200,6 +228,16 @@ class FaceLogEmployeeController extends Controller
                                         $employee->is_active,
                                 ]);
 
+                            if (
+                                $employee->employment_group
+                                === 'asia'
+                            ) {
+                                $employee
+                                    ->leaveBalanceForYear(
+                                        now()->year
+                                    );
+                            }
+
 
                             $result['created']++;
 
@@ -231,6 +269,17 @@ class FaceLogEmployeeController extends Controller
                             $employeeData
                         );
 
+                        if (
+                            $employee->employment_group
+                            === 'asia'
+                        ) {
+                            $employee
+                                ->leaveBalanceForYear(
+                                    now()->year
+                                );
+                        }
+
+
                         if ($employee->user) {
 
                             $employee->user->update([
@@ -243,7 +292,6 @@ class FaceLogEmployeeController extends Controller
                                 'is_active' =>
                                     $employee->is_active,
                             ]);
-
                         }
 
 
@@ -267,7 +315,6 @@ class FaceLogEmployeeController extends Controller
                     'message' =>
                         $e->getMessage(),
                 ];
-
             }
         }
 
