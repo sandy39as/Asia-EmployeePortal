@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmployeeLeaveBalance;
 use App\Models\LeaveRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,12 +28,10 @@ class FaceLogLeaveRequestController extends Controller
             ],
         ]);
 
-
         $perPage = (int) (
             $validated['per_page']
             ?? 100
         );
-
 
         $query = LeaveRequest::query()
             ->with([
@@ -47,13 +46,13 @@ class FaceLogLeaveRequestController extends Controller
 
                 'approvedBy',
                 'rejectedBy',
-            ])
 
+                'specialLeaveType',
+            ])
             ->where(
                 'kabag_status',
                 'approved'
             )
-
             ->whereIn(
                 'hrd_status',
                 [
@@ -75,12 +74,10 @@ class FaceLogLeaveRequestController extends Controller
             );
         }
 
-
         $items = $query
             ->orderBy('updated_at')
             ->orderBy('id')
             ->paginate($perPage);
-
 
         return response()->json([
             'success' => true,
@@ -117,6 +114,7 @@ class FaceLogLeaveRequestController extends Controller
         ]);
     }
 
+
     public function show(
         string $uuid
     ): JsonResponse {
@@ -134,15 +132,14 @@ class FaceLogLeaveRequestController extends Controller
 
                 'approvedBy',
                 'rejectedBy',
-            ])
 
+                'specialLeaveType',
+            ])
             ->where(
                 'uuid',
                 $uuid
             )
-
             ->firstOrFail();
-
 
         return response()->json([
             'success' => true,
@@ -151,6 +148,7 @@ class FaceLogLeaveRequestController extends Controller
                 $this->transform($item),
         ]);
     }
+
 
     public function approve(
         Request $request,
@@ -166,14 +164,23 @@ class FaceLogLeaveRequestController extends Controller
                 ],
             ]);
 
-
         $item = DB::transaction(
             function () use (
                 $uuid,
                 $validated
             ) {
 
+                /*
+                |--------------------------------------------------------------------------
+                | LOCK PENGAJUAN
+                |--------------------------------------------------------------------------
+                */
+
                 $item = LeaveRequest::query()
+                    ->with([
+                        'employee',
+                        'specialLeaveType',
+                    ])
                     ->where(
                         'uuid',
                         $uuid
@@ -181,13 +188,44 @@ class FaceLogLeaveRequestController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | IDEMPOTENT
+                |--------------------------------------------------------------------------
+                |
+                | Kalau request approval yang sama terkirim lagi,
+                | jangan potong saldo dua kali.
+                |
+                */
+
                 if (
                     $item->hrd_status
                     === 'approved'
                 ) {
-                    return $item;
+                    return $item->fresh([
+                        'employee',
+
+                        'kabag',
+                        'kabagApprovedBy',
+                        'kabagRejectedBy',
+
+                        'hrdApprovedBy',
+                        'hrdRejectedBy',
+
+                        'approvedBy',
+                        'rejectedBy',
+
+                        'specialLeaveType',
+                    ]);
                 }
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | VALIDASI WORKFLOW
+                |--------------------------------------------------------------------------
+                */
 
                 if (
                     $item->kabag_status
@@ -198,6 +236,7 @@ class FaceLogLeaveRequestController extends Controller
                             'Pengajuan belum disetujui oleh Kabag.',
                     ]);
                 }
+
 
                 if (
                     $item->hrd_status
@@ -214,6 +253,7 @@ class FaceLogLeaveRequestController extends Controller
                     ]);
                 }
 
+
                 if (
                     $item->status
                     !== 'pending'
@@ -226,6 +266,30 @@ class FaceLogLeaveRequestController extends Controller
                     ]);
                 }
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | POTONG SALDO CUTI TAHUNAN
+                |--------------------------------------------------------------------------
+                |
+                | Hanya:
+                | jenis          = cuti
+                | leave_category = annual
+                |
+                | Cuti khusus tidak menyentuh saldo tahunan.
+                |
+                */
+
+                $this->consumeAnnualLeaveBalance(
+                    $item
+                );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | FINAL APPROVE
+                |--------------------------------------------------------------------------
+                */
 
                 $now = now();
 
@@ -255,6 +319,12 @@ class FaceLogLeaveRequestController extends Controller
                     'hrd_action_source' =>
                         'facelog',
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | LEGACY
+                    |--------------------------------------------------------------------------
+                    */
+
                     'approved_by' =>
                         null,
 
@@ -270,6 +340,12 @@ class FaceLogLeaveRequestController extends Controller
                     'rejection_reason' =>
                         null,
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | FACELOG USER NAME
+                    |--------------------------------------------------------------------------
+                    */
+
                     'external_approved_by_name' =>
                         $validated[
                             'approved_by_name'
@@ -277,6 +353,12 @@ class FaceLogLeaveRequestController extends Controller
 
                     'external_rejected_by_name' =>
                         null,
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SYNC
+                    |--------------------------------------------------------------------------
+                    */
 
                     'local_sync_status' =>
                         'synced',
@@ -298,6 +380,8 @@ class FaceLogLeaveRequestController extends Controller
 
                     'approvedBy',
                     'rejectedBy',
+
+                    'specialLeaveType',
                 ]);
             }
         );
@@ -313,6 +397,7 @@ class FaceLogLeaveRequestController extends Controller
                 $this->transform($item),
         ]);
     }
+
 
     public function reject(
         Request $request,
@@ -342,6 +427,10 @@ class FaceLogLeaveRequestController extends Controller
             ) {
 
                 $item = LeaveRequest::query()
+                    ->with([
+                        'employee',
+                        'specialLeaveType',
+                    ])
                     ->where(
                         'uuid',
                         $uuid
@@ -349,12 +438,40 @@ class FaceLogLeaveRequestController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | IDEMPOTENT
+                |--------------------------------------------------------------------------
+                */
+
                 if (
                     $item->hrd_status
                     === 'rejected'
                 ) {
-                    return $item;
+                    return $item->fresh([
+                        'employee',
+
+                        'kabag',
+                        'kabagApprovedBy',
+                        'kabagRejectedBy',
+
+                        'hrdApprovedBy',
+                        'hrdRejectedBy',
+
+                        'approvedBy',
+                        'rejectedBy',
+
+                        'specialLeaveType',
+                    ]);
                 }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | VALIDASI WORKFLOW
+                |--------------------------------------------------------------------------
+                */
 
                 if (
                     $item->kabag_status
@@ -365,6 +482,7 @@ class FaceLogLeaveRequestController extends Controller
                             'Pengajuan belum disetujui oleh Kabag.',
                     ]);
                 }
+
 
                 if (
                     $item->hrd_status
@@ -381,6 +499,7 @@ class FaceLogLeaveRequestController extends Controller
                     ]);
                 }
 
+
                 if (
                     $item->status
                     !== 'pending'
@@ -394,7 +513,14 @@ class FaceLogLeaveRequestController extends Controller
                 }
 
 
+                /*
+                |--------------------------------------------------------------------------
+                | REJECT TIDAK MENGUBAH SALDO
+                |--------------------------------------------------------------------------
+                */
+
                 $now = now();
+
 
                 $item->update([
 
@@ -424,6 +550,12 @@ class FaceLogLeaveRequestController extends Controller
                     'hrd_action_source' =>
                         'facelog',
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | LEGACY
+                    |--------------------------------------------------------------------------
+                    */
+
                     'approved_by' =>
                         null,
 
@@ -441,6 +573,12 @@ class FaceLogLeaveRequestController extends Controller
                             'rejection_reason'
                         ],
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | FACELOG USER NAME
+                    |--------------------------------------------------------------------------
+                    */
+
                     'external_approved_by_name' =>
                         null,
 
@@ -448,6 +586,12 @@ class FaceLogLeaveRequestController extends Controller
                         $validated[
                             'rejected_by_name'
                         ],
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SYNC
+                    |--------------------------------------------------------------------------
+                    */
 
                     'local_sync_status' =>
                         'synced',
@@ -469,6 +613,8 @@ class FaceLogLeaveRequestController extends Controller
 
                     'approvedBy',
                     'rejectedBy',
+
+                    'specialLeaveType',
                 ]);
             }
         );
@@ -484,6 +630,201 @@ class FaceLogLeaveRequestController extends Controller
                 $this->transform($item),
         ]);
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | POTONG SALDO CUTI TAHUNAN
+    |--------------------------------------------------------------------------
+    */
+
+    protected function consumeAnnualLeaveBalance(
+        LeaveRequest $item
+    ): void {
+
+        /*
+        |--------------------------------------------------------------------------
+        | BUKAN CUTI TAHUNAN
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            $item->jenis !== 'cuti'
+            ||
+            $item->leave_category !== 'annual'
+        ) {
+            return;
+        }
+
+
+        $employee =
+            $item->employee;
+
+
+        if (! $employee) {
+            throw ValidationException::withMessages([
+                'employee' =>
+                    'Data karyawan pengajuan tidak ditemukan.',
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | ANNUAL HANYA UNTUK ASIA
+        |--------------------------------------------------------------------------
+        */
+
+        if (! $employee->isAsiaEmployee()) {
+            throw ValidationException::withMessages([
+                'leave_category' =>
+                    'Cuti tahunan hanya tersedia untuk karyawan ASIA.',
+            ]);
+        }
+
+
+        $leaveDays =
+            (int) (
+                $item->leave_days
+                ?? 0
+            );
+
+
+        if ($leaveDays <= 0) {
+            throw ValidationException::withMessages([
+                'leave_days' =>
+                    'Jumlah hari cuti tahunan tidak valid.',
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | TAHUN SALDO
+        |--------------------------------------------------------------------------
+        */
+
+        $year =
+            $item->tanggal_mulai
+                ?->year
+            ?? now()->year;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | LOCK SALDO
+        |--------------------------------------------------------------------------
+        |
+        | Penting kalau ada dua pengajuan yang diapprove hampir bersamaan.
+        |
+        */
+
+        $balance =
+            EmployeeLeaveBalance::query()
+                ->where(
+                    'employee_id',
+                    $employee->id
+                )
+                ->where(
+                    'year',
+                    $year
+                )
+                ->lockForUpdate()
+                ->first();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | FALLBACK JIKA BELUM ADA SALDO
+        |--------------------------------------------------------------------------
+        */
+
+        if (! $balance) {
+
+            EmployeeLeaveBalance::create([
+                'employee_id' =>
+                    $employee->id,
+
+                'year' =>
+                    $year,
+
+                'entitlement' =>
+                    12,
+
+                'used' =>
+                    0,
+
+                'remaining' =>
+                    12,
+            ]);
+
+
+            $balance =
+                EmployeeLeaveBalance::query()
+                    ->where(
+                        'employee_id',
+                        $employee->id
+                    )
+                    ->where(
+                        'year',
+                        $year
+                    )
+                    ->lockForUpdate()
+                    ->firstOrFail();
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CEK SALDO TERBARU
+        |--------------------------------------------------------------------------
+        |
+        | Walaupun saat submit saldonya cukup, bisa saja ada pengajuan lain
+        | yang lebih dulu disetujui HRD.
+        |
+        */
+
+        if (
+            $leaveDays
+            >
+            (int) $balance->remaining
+        ) {
+
+            throw ValidationException::withMessages([
+                'leave_days' =>
+                    'Saldo cuti tahunan tidak mencukupi. '
+                    . 'Pengajuan membutuhkan '
+                    . $leaveDays
+                    . ' hari, sedangkan sisa saldo '
+                    . $balance->remaining
+                    . ' hari.',
+            ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | POTONG
+        |--------------------------------------------------------------------------
+        */
+
+        $balance->update([
+            'used' =>
+                (int) $balance->used
+                + $leaveDays,
+
+            'remaining' =>
+                (int) $balance->remaining
+                - $leaveDays,
+        ]);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | TRANSFORM UNTUK FACELOG
+    |--------------------------------------------------------------------------
+    */
 
     protected function transform(
         LeaveRequest $item
@@ -503,6 +844,13 @@ class FaceLogLeaveRequestController extends Controller
             $item->hrdRejectedBy?->name
             ?? $item->rejectedBy?->name
             ?? $item->external_rejected_by_name;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | LAMPIRAN
+        |--------------------------------------------------------------------------
+        */
 
         $lampiranUrl = null;
 
@@ -554,6 +902,12 @@ class FaceLogLeaveRequestController extends Controller
 
         return [
 
+            /*
+            |--------------------------------------------------------------------------
+            | EMPLOYEE
+            |--------------------------------------------------------------------------
+            */
+
             'uuid' =>
                 $item->uuid,
 
@@ -575,8 +929,30 @@ class FaceLogLeaveRequestController extends Controller
             'jabatan' =>
                 $employee?->jabatan,
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | PENGAJUAN
+            |--------------------------------------------------------------------------
+            */
+
             'jenis' =>
                 $item->jenis,
+
+            'leave_category' =>
+                $item->leave_category,
+
+            'leave_days' =>
+                $item->leave_days,
+
+            'special_leave_type_id' =>
+                $item->special_leave_type_id,
+
+            'special_leave_type_name' =>
+                $item->specialLeaveType?->name,
+
+            'special_leave_type_code' =>
+                $item->specialLeaveType?->code,
 
             'durasi_type' =>
                 $item->durasi_type,
@@ -613,6 +989,12 @@ class FaceLogLeaveRequestController extends Controller
             'lampiran_url' =>
                 $lampiranUrl,
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | STATUS
+            |--------------------------------------------------------------------------
+            */
 
             'status' =>
                 $item->status,
@@ -654,6 +1036,13 @@ class FaceLogLeaveRequestController extends Controller
             'hrd_rejection_reason' =>
                 $item->hrd_rejection_reason,
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | LEGACY
+            |--------------------------------------------------------------------------
+            */
+
             'approved_by' =>
                 $hrdApprovedName,
 
@@ -677,6 +1066,13 @@ class FaceLogLeaveRequestController extends Controller
             'rejection_reason' =>
                 $item->hrd_rejection_reason
                 ?? $item->rejection_reason,
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | TIMESTAMP
+            |--------------------------------------------------------------------------
+            */
 
             'created_at' =>
                 $item->created_at
