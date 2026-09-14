@@ -72,6 +72,33 @@
                             {{-- FONT NAMA DIPERBESAR --}}
                             <h3 class="text-base font-extrabold text-slate-900 leading-snug">{{ $employee->nama }}</h3>
                             <p class="text-xs sm:text-sm text-slate-500 font-bold mt-1">{{ $employee->employee_code }} • {{ $employee->jabatan ?: '-' }}</p>
+                                <div class="mt-2 flex flex-wrap items-center gap-2">
+
+                                    <span class="text-[11px] font-bold text-slate-500">
+                                        {{ $employee->source_kategori_karyawan_name ?: 'Kategori belum tersinkron' }}
+                                    </span>
+
+                                    @if ($employee->employment_group === 'asia')
+
+                                        <span class="rounded-lg border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-extrabold text-sky-700">
+                                            ASIA
+                                        </span>
+
+                                    @elseif ($employee->employment_group === 'outsourcing')
+
+                                        <span class="rounded-lg border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-extrabold text-orange-700">
+                                            OUTSOURCING
+                                        </span>
+
+                                    @else
+
+                                        <span class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                            Belum Sync
+                                        </span>
+
+                                    @endif
+
+                                </div>
                         </div>
 
                         <span class="rounded-lg px-2.5 py-1 text-xs font-extrabold border {{ $employee->is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
@@ -106,6 +133,7 @@
                     <tr>
                         <th class="px-5 py-3.5 text-left">Karyawan</th>
                         <th class="px-5 py-3.5 text-left">Jabatan</th>
+                        <th class="px-5 py-3.5 text-left">Kategori / Group</th>
                         <th class="px-5 py-3.5 text-left">Login (ID)</th>
                         <th class="px-5 py-3.5 text-left">Status Password</th>
                         <th class="px-5 py-3.5 text-left">Keaktifan</th>
@@ -129,6 +157,39 @@
                                 </div>
                             </td>
                             <td class="px-5 py-4 text-slate-700 font-medium">{{ $employee->jabatan ?: '-' }}</td>
+
+                            <td class="px-5 py-4">
+
+                                <div class="space-y-1.5">
+
+                                    <div class="text-xs font-bold text-slate-700">
+                                        {{ $employee->source_kategori_karyawan_name ?: '-' }}
+                                    </div>
+
+                                    @if ($employee->employment_group === 'asia')
+
+                                        <span class="inline-flex rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-extrabold text-sky-700">
+                                            ASIA
+                                        </span>
+
+                                    @elseif ($employee->employment_group === 'outsourcing')
+
+                                        <span class="inline-flex rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-extrabold text-orange-700">
+                                            OUTSOURCING
+                                        </span>
+
+                                    @else
+
+                                        <span class="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                                            Belum Sync
+                                        </span>
+
+                                    @endif
+
+                                </div>
+
+                            </td>
+
                             <td class="px-5 py-4 text-slate-900 font-mono font-bold">{{ $employee->user?->username ?: '-' }}</td>
                             <td class="px-5 py-4">
                                 <span id="passwordBadge-{{ $employee->id }}" class="rounded-lg px-2.5 py-1 text-xs font-extrabold border {{ !$hasUser ? 'bg-rose-50 text-rose-700 border-rose-200' : ($mustChangePassword ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200') }}">
@@ -151,7 +212,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-8 text-center text-slate-500 font-medium">Data karyawan tidak ditemukan.</td>
+                            <td colspan="7" class="px-5 py-8 text-center text-slate-500 font-medium">Data karyawan tidak ditemukan.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -213,6 +274,58 @@
                                 {{ $employee->tanggal_masuk ? \Carbon\Carbon::parse($employee->tanggal_masuk)->format('d/m/Y') : '-' }}
                             </span>
                         </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+
+                        <span class="text-[11px] text-slate-500 font-bold uppercase block">
+                            Kategori FaceLog
+                        </span>
+
+                        <span class="text-slate-800 font-bold text-xs mt-1 block">
+                            {{ $employee->source_kategori_karyawan_name ?: '-' }}
+                        </span>
+
+                        @if ($employee->source_kategori_karyawan_id)
+                            <span class="mt-0.5 block text-[10px] font-semibold text-slate-400">
+                                ID Kategori:
+                                {{ $employee->source_kategori_karyawan_id }}
+                            </span>
+                        @endif
+
+                    </div>
+
+
+                    <div class="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+
+                        <span class="text-[11px] text-slate-500 font-bold uppercase block">
+                            Group Karyawan
+                        </span>
+
+                        <div class="mt-1">
+
+                            @if ($employee->employment_group === 'asia')
+
+                                <span class="inline-flex rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-extrabold text-sky-700">
+                                    ASIA
+                                </span>
+
+                            @elseif ($employee->employment_group === 'outsourcing')
+
+                                <span class="inline-flex rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-extrabold text-orange-700">
+                                    OUTSOURCING
+                                </span>
+
+                            @else
+
+                                <span class="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-500">
+                                    Belum Sync
+                                </span>
+
+                            @endif
+
+                        </div>
+
                     </div>
 
                     {{-- RESET PASSWORD SECTION --}}
