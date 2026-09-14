@@ -10,6 +10,7 @@ use App\Http\Controllers\Master\KabagController;
 use App\Http\Controllers\Master\KabagMappingController;
 use App\Http\Controllers\Kabag\KabagLeaveRequestController;
 use App\Http\Controllers\Master\SpecialLeaveTypeController;
+use App\Http\Controllers\Master\PermissionTypeController;
 
 // Redirect Home
 Route::get('/', function () {
@@ -148,6 +149,38 @@ Route::middleware([
             [KabagLeaveRequestController::class, 'reject']
         )->name('leave-requests.reject');
 
+    });
+
+Route::middleware([
+    'auth',
+    'portal.master-admin',
+])
+    ->prefix('master')
+    ->name('master.')
+    ->group(function () {
+
+        Route::resource(
+            'kabag',
+            KabagController::class
+        )->except('show');
+
+        Route::resource(
+            'special-leave-types',
+            SpecialLeaveTypeController::class
+        )->except([
+            'create',
+            'edit',
+            'show',
+        ]);
+
+        Route::resource(
+            'permission-types',
+            PermissionTypeController::class
+        )->except([
+            'create',
+            'edit',
+            'show',
+        ]);
     });
 
 require __DIR__.'/auth.php';

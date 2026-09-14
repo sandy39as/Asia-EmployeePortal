@@ -287,6 +287,35 @@
                         Cuti Khusus
                     </a>
 
+                    <a
+                        href="{{ route('master.permission-types.index') }}"
+                        class="
+                            flex items-center gap-3 rounded-xl px-3 py-2.5
+                            text-sm font-bold transition
+                            {{ request()->routeIs('master.permission-types.*')
+                                ? 'bg-slate-900 text-white'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            }}
+                        "
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M9 12h6m-6 4h6M7 8h10M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"
+                            />
+                        </svg>
+
+                        Jenis Izin
+                    </a>
+
                 @endif
 
 
