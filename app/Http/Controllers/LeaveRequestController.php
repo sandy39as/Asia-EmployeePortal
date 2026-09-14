@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeaveRequest;
+use App\Models\SpecialLeaveType;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -38,7 +39,6 @@ class LeaveRequestController extends Controller
         );
 
         $items = LeaveRequest::query()
-
             ->with([
                 'kabag',
                 'kabagApprovedBy',
@@ -49,13 +49,13 @@ class LeaveRequestController extends Controller
 
                 'approvedBy',
                 'rejectedBy',
-            ])
 
+                'specialLeaveType',
+            ])
             ->where(
                 'employee_id',
                 $employee->id
             )
-
             ->when(
                 $status !== '',
                 fn ($q) =>
@@ -64,7 +64,6 @@ class LeaveRequestController extends Controller
                         $status
                     )
             )
-
             ->when(
                 $jenis !== '',
                 fn ($q) =>
@@ -73,10 +72,45 @@ class LeaveRequestController extends Controller
                         $jenis
                     )
             )
-
             ->latest()
             ->paginate(10)
             ->withQueryString();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | MASTER CUTI KHUSUS
+        |--------------------------------------------------------------------------
+        */
+
+        $specialLeaveTypes =
+            SpecialLeaveType::query()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->orderBy('name')
+                ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | SALDO CUTI TAHUNAN
+        |--------------------------------------------------------------------------
+        |
+        | Hanya employee ASIA yang punya saldo cuti tahunan.
+        |
+        */
+
+        $leaveBalance = null;
+
+        if ($employee->isAsiaEmployee()) {
+            $leaveBalance =
+                $employee->leaveBalanceForYear(
+                    now()->year
+                );
+        }
+
 
         return view(
             'leave-requests.index',
@@ -84,37 +118,76 @@ class LeaveRequestController extends Controller
                 'employee',
                 'items',
                 'status',
-                'jenis'
+                'jenis',
+                'specialLeaveTypes',
+                'leaveBalance'
             )
         );
     }
 
+
     public function create(
         Request $request
     ): View {
-        $employee = $request->user()->employee;
+        $employee =
+            $request->user()->employee;
 
         abort_unless(
             $employee,
             403
         );
 
+
+        $specialLeaveTypes =
+            SpecialLeaveType::query()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->orderBy('name')
+                ->get();
+
+
+        $leaveBalance = null;
+
+        if ($employee->isAsiaEmployee()) {
+            $leaveBalance =
+                $employee->leaveBalanceForYear(
+                    now()->year
+                );
+        }
+
+
         return view(
             'leave-requests.create',
-            compact('employee')
+            compact(
+                'employee',
+                'specialLeaveTypes',
+                'leaveBalance'
+            )
         );
     }
+
 
     public function store(
         Request $request
     ): RedirectResponse|JsonResponse {
 
-        $employee = $request->user()->employee;
+        $employee =
+            $request->user()->employee;
+
 
         abort_unless(
             $employee,
             403
         );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CEK EMPLOYEE AKTIF
+        |--------------------------------------------------------------------------
+        */
 
         if (! $employee->is_active) {
 
@@ -131,6 +204,7 @@ class LeaveRequestController extends Controller
                 );
             }
 
+
             return back()
                 ->withInput()
                 ->with(
@@ -139,13 +213,22 @@ class LeaveRequestController extends Controller
                 );
         }
 
-        $kabag = $employee
-            ->kabag()
-            ->where(
-                'users.is_active',
-                true
-            )
-            ->first();
+
+        /*
+        |--------------------------------------------------------------------------
+        | CEK KABAG
+        |--------------------------------------------------------------------------
+        */
+
+        $kabag =
+            $employee
+                ->kabag()
+                ->where(
+                    'users.is_active',
+                    true
+                )
+                ->first();
+
 
         if (! $kabag) {
 
@@ -174,12 +257,30 @@ class LeaveRequestController extends Controller
                 );
         }
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | VALIDASI DASAR
+        |--------------------------------------------------------------------------
+        */
+
         $validated =
             $request->validate(
                 [
                     'jenis' => [
                         'required',
                         'in:izin,cuti,sakit',
+                    ],
+
+                    'leave_category' => [
+                        'nullable',
+                        'in:annual,special',
+                    ],
+
+                    'special_leave_type_id' => [
+                        'nullable',
+                        'integer',
+                        'exists:special_leave_types,id',
                     ],
 
                     'durasi_type' => [
@@ -228,6 +329,12 @@ class LeaveRequestController extends Controller
                     'jenis.in' =>
                         'Jenis pengajuan tidak valid.',
 
+                    'leave_category.in' =>
+                        'Jenis cuti tidak valid.',
+
+                    'special_leave_type_id.exists' =>
+                        'Jenis cuti khusus tidak ditemukan.',
+
                     'durasi_type.required' =>
                         'Durasi pengajuan wajib dipilih.',
 
@@ -257,6 +364,231 @@ class LeaveRequestController extends Controller
                 ]
             );
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | HITUNG JUMLAH HARI
+        |--------------------------------------------------------------------------
+        |
+        | Saat ini dihitung secara tanggal kalender:
+        | tanggal mulai sampai tanggal selesai, inklusif.
+        |
+        */
+
+        $tanggalMulai =
+            Carbon::parse(
+                $validated['tanggal_mulai']
+            )->startOfDay();
+
+
+        $tanggalSelesai =
+            Carbon::parse(
+                $validated['tanggal_selesai']
+            )->startOfDay();
+
+
+        $leaveDays =
+            $tanggalMulai
+                ->diffInDays(
+                    $tanggalSelesai
+                )
+            + 1;
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | LOGIC JENIS CUTI
+        |--------------------------------------------------------------------------
+        */
+
+        $leaveCategory = null;
+        $specialLeaveTypeId = null;
+
+
+        if (
+            $validated['jenis']
+            === 'cuti'
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | CUTI WAJIB FULL DAY
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $validated['durasi_type']
+                !== 'full_day'
+            ) {
+                throw ValidationException::withMessages([
+                    'durasi_type' =>
+                        'Pengajuan cuti hanya dapat menggunakan durasi hari penuh.',
+                ]);
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | WAJIB PILIH CUTI TAHUNAN / CUTI KHUSUS
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                blank(
+                    $validated['leave_category']
+                    ?? null
+                )
+            ) {
+                throw ValidationException::withMessages([
+                    'leave_category' =>
+                        'Jenis cuti wajib dipilih.',
+                ]);
+            }
+
+
+            $leaveCategory =
+                $validated['leave_category'];
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | CUTI TAHUNAN
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $leaveCategory
+                === 'annual'
+            ) {
+
+                /*
+                | Outsourcing tidak memiliki cuti tahunan.
+                */
+
+                if (! $employee->isAsiaEmployee()) {
+
+                    throw ValidationException::withMessages([
+                        'leave_category' =>
+                            'Cuti tahunan hanya tersedia untuk karyawan ASIA.',
+                    ]);
+                }
+
+
+                $leaveBalance =
+                    $employee
+                        ->leaveBalanceForYear(
+                            $tanggalMulai->year
+                        );
+
+
+                if (! $leaveBalance) {
+
+                    throw ValidationException::withMessages([
+                        'leave_category' =>
+                            'Saldo cuti tahunan belum tersedia.',
+                    ]);
+                }
+
+
+                /*
+                | Cek saldo saat pengajuan.
+                | Saldo BELUM dikurangi di sini.
+                */
+
+                if (
+                    $leaveDays
+                    >
+                    $leaveBalance->remaining
+                ) {
+
+                    throw ValidationException::withMessages([
+                        'tanggal_selesai' =>
+                            'Jumlah cuti yang diajukan adalah '
+                            . $leaveDays
+                            . ' hari, sedangkan sisa cuti tahunan hanya '
+                            . $leaveBalance->remaining
+                            . ' hari.',
+                    ]);
+                }
+
+
+                $specialLeaveTypeId = null;
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | CUTI KHUSUS
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $leaveCategory
+                === 'special'
+            ) {
+
+                if (
+                    blank(
+                        $validated[
+                            'special_leave_type_id'
+                        ]
+                        ?? null
+                    )
+                ) {
+                    throw ValidationException::withMessages([
+                        'special_leave_type_id' =>
+                            'Jenis cuti khusus wajib dipilih.',
+                    ]);
+                }
+
+
+                $specialLeaveType =
+                    SpecialLeaveType::query()
+                        ->whereKey(
+                            $validated[
+                                'special_leave_type_id'
+                            ]
+                        )
+                        ->where(
+                            'is_active',
+                            true
+                        )
+                        ->first();
+
+
+                if (! $specialLeaveType) {
+
+                    throw ValidationException::withMessages([
+                        'special_leave_type_id' =>
+                            'Jenis cuti khusus tidak aktif atau tidak ditemukan.',
+                    ]);
+                }
+
+
+                $specialLeaveTypeId =
+                    $specialLeaveType->id;
+            }
+
+        } else {
+
+            /*
+            |--------------------------------------------------------------------------
+            | BUKAN CUTI
+            |--------------------------------------------------------------------------
+            */
+
+            $leaveCategory = null;
+            $specialLeaveTypeId = null;
+            $leaveDays = null;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | IZIN BEBERAPA JAM
+        |--------------------------------------------------------------------------
+        */
+
         if (
             $validated['durasi_type']
             === 'hourly'
@@ -273,6 +605,7 @@ class LeaveRequestController extends Controller
                     ?? null
                 )
             ) {
+
                 throw ValidationException::withMessages([
                     'jam_mulai' =>
                         'Jam mulai dan jam selesai wajib diisi untuk izin beberapa jam.',
@@ -285,6 +618,7 @@ class LeaveRequestController extends Controller
                 !==
                 $validated['tanggal_selesai']
             ) {
+
                 throw ValidationException::withMessages([
                     'tanggal_selesai' =>
                         'Pengajuan beberapa jam hanya boleh dalam tanggal yang sama.',
@@ -312,6 +646,7 @@ class LeaveRequestController extends Controller
                         $jamMulai
                     )
             ) {
+
                 throw ValidationException::withMessages([
                     'jam_selesai' =>
                         'Jam selesai harus lebih besar dari jam mulai.',
@@ -324,19 +659,28 @@ class LeaveRequestController extends Controller
             $validated['jam_selesai'] = null;
         }
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | LAMPIRAN
+        |--------------------------------------------------------------------------
+        */
+
         $lampiranPath = null;
         $lampiranOriginalName = null;
 
 
         if ($request->hasFile('lampiran')) {
 
-            $file = $request->file(
-                'lampiran'
-            );
+            $file =
+                $request->file(
+                    'lampiran'
+                );
 
 
             $lampiranOriginalName =
-                $file->getClientOriginalName();
+                $file
+                    ->getClientOriginalName();
 
 
             $lampiranPath =
@@ -345,6 +689,13 @@ class LeaveRequestController extends Controller
                     'public'
                 );
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | SIMPAN PENGAJUAN
+        |--------------------------------------------------------------------------
+        */
 
         try {
 
@@ -363,22 +714,59 @@ class LeaveRequestController extends Controller
                     'jenis' =>
                         $validated['jenis'],
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | DATA CUTI
+                    |--------------------------------------------------------------------------
+                    */
+
+                    'leave_category' =>
+                        $leaveCategory,
+
+                    'special_leave_type_id' =>
+                        $specialLeaveTypeId,
+
+                    'leave_days' =>
+                        $leaveDays,
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | DURASI
+                    |--------------------------------------------------------------------------
+                    */
+
                     'durasi_type' =>
-                        $validated['durasi_type'],
+                        $validated[
+                            'durasi_type'
+                        ],
 
                     'tanggal_mulai' =>
-                        $validated['tanggal_mulai'],
+                        $validated[
+                            'tanggal_mulai'
+                        ],
 
                     'tanggal_selesai' =>
-                        $validated['tanggal_selesai'],
+                        $validated[
+                            'tanggal_selesai'
+                        ],
 
                     'jam_mulai' =>
-                        $validated['jam_mulai']
+                        $validated[
+                            'jam_mulai'
+                        ]
                         ?? null,
 
                     'jam_selesai' =>
-                        $validated['jam_selesai']
+                        $validated[
+                            'jam_selesai'
+                        ]
                         ?? null,
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | DETAIL
+                    |--------------------------------------------------------------------------
+                    */
 
                     'alasan' =>
                         $validated['alasan'],
@@ -388,6 +776,12 @@ class LeaveRequestController extends Controller
 
                     'lampiran_original_name' =>
                         $lampiranOriginalName,
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | APPROVAL
+                    |--------------------------------------------------------------------------
+                    */
 
                     'kabag_status' =>
                         'pending',
@@ -406,14 +800,23 @@ class LeaveRequestController extends Controller
 
             if ($lampiranPath) {
 
-                Storage::disk('public')
-                    ->delete(
-                        $lampiranPath
-                    );
+                Storage::disk(
+                    'public'
+                )->delete(
+                    $lampiranPath
+                );
             }
+
 
             throw $e;
         }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | RESPONSE JSON
+        |--------------------------------------------------------------------------
+        */
 
         if ($request->expectsJson()) {
 
@@ -431,6 +834,15 @@ class LeaveRequestController extends Controller
 
                     'uuid' =>
                         $leaveRequest->uuid,
+
+                    'jenis' =>
+                        $leaveRequest->jenis,
+
+                    'leave_category' =>
+                        $leaveRequest->leave_category,
+
+                    'leave_days' =>
+                        $leaveRequest->leave_days,
 
                     'status' =>
                         $leaveRequest->status,
@@ -452,6 +864,7 @@ class LeaveRequestController extends Controller
             ]);
         }
 
+
         return redirect()
             ->route(
                 'leave-requests.index'
@@ -463,6 +876,7 @@ class LeaveRequestController extends Controller
                 . '.'
             );
     }
+
 
     public function show(
         Request $request,
@@ -481,6 +895,7 @@ class LeaveRequestController extends Controller
             403
         );
 
+
         $leaveRequest->load([
             'kabag',
             'kabagApprovedBy',
@@ -491,6 +906,8 @@ class LeaveRequestController extends Controller
 
             'approvedBy',
             'rejectedBy',
+
+            'specialLeaveType',
         ]);
 
 
@@ -502,6 +919,7 @@ class LeaveRequestController extends Controller
             )
         );
     }
+
 
     public function cancel(
         Request $request,
@@ -519,6 +937,7 @@ class LeaveRequestController extends Controller
                 === $employee->id,
             403
         );
+
 
         if (
             $leaveRequest->status

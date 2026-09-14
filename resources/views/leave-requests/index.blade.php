@@ -121,6 +121,18 @@
                                     {{ $item->jenis_label }}
                                 </span>
 
+                                @if ($item->jenis === 'cuti')
+                                    <span class="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-extrabold text-violet-700">
+                                        @if ($item->leave_category === 'annual')
+                                            Cuti Tahunan
+                                        @elseif ($item->leave_category === 'special')
+                                            {{ $item->specialLeaveType?->name ?? 'Cuti Khusus' }}
+                                        @else
+                                            Cuti
+                                        @endif
+                                    </span>
+                                @endif
+
                                 <span class="text-sm sm:text-base font-extrabold text-slate-900">
 
                                     {{ $item->tanggal_mulai->format('d M Y') }}
@@ -416,6 +428,132 @@
 
                             </label>
 
+                        </div>
+
+                    </div>
+
+
+                    {{-- ===================================================== --}}
+                    {{-- DETAIL JENIS CUTI --}}
+                    {{-- ===================================================== --}}
+                    <div
+                        id="modalLeaveCategoryFields"
+                        class="hidden space-y-3 rounded-2xl border border-violet-200 bg-violet-50/50 p-4"
+                    >
+
+                        <div>
+                            <div class="text-xs font-extrabold uppercase tracking-wider text-violet-700">
+                                Jenis Cuti
+                            </div>
+                            <div class="mt-1 text-xs font-medium text-slate-500">
+                                Cuti tahunan memakai saldo tahunan. Cuti khusus tidak memotong saldo tahunan.
+                            </div>
+                        </div>
+
+                        <div class="space-y-2.5">
+
+                            @if ($employee->isAsiaEmployee())
+                                <label class="block cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="leave_category"
+                                        value="annual"
+                                        class="peer sr-only"
+                                    >
+
+                                    <div class="rounded-xl border border-slate-200 bg-white p-3.5 transition peer-checked:border-violet-500 peer-checked:ring-2 peer-checked:ring-violet-100">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div class="text-sm font-extrabold text-slate-900">
+                                                    Cuti Tahunan
+                                                </div>
+                                                <div class="mt-1 text-xs font-medium text-slate-500">
+                                                    Mengurangi saldo setelah HRD menyetujui pengajuan.
+                                                </div>
+                                            </div>
+
+                                            <div class="shrink-0 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-extrabold text-emerald-700">
+                                                Sisa {{ $leaveBalance?->remaining ?? 0 }} hari
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
+                            @else
+                                <div class="rounded-xl border border-slate-200 bg-white p-3.5">
+                                    <div class="text-sm font-extrabold text-slate-500">
+                                        Cuti Tahunan
+                                    </div>
+                                    <div class="mt-1 text-xs font-medium text-slate-500">
+                                        Tidak tersedia untuk karyawan outsourcing.
+                                    </div>
+                                </div>
+                            @endif
+
+
+                            <label class="block cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="leave_category"
+                                    value="special"
+                                    class="peer sr-only"
+                                >
+
+                                <div class="rounded-xl border border-slate-200 bg-white p-3.5 transition peer-checked:border-violet-500 peer-checked:ring-2 peer-checked:ring-violet-100">
+                                    <div class="text-sm font-extrabold text-slate-900">
+                                        Cuti Khusus
+                                    </div>
+                                    <div class="mt-1 text-xs font-medium text-slate-500">
+                                        Tidak mengurangi saldo cuti tahunan.
+                                    </div>
+                                </div>
+                            </label>
+
+                        </div>
+
+
+                        <div
+                            id="modalSpecialLeaveTypeFields"
+                            class="hidden"
+                        >
+                            <label class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
+                                Jenis Cuti Khusus
+                            </label>
+
+                            <select
+                                name="special_leave_type_id"
+                                id="modalSpecialLeaveType"
+                                class="w-full rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-violet-500 focus:outline-none"
+                            >
+                                <option value="">
+                                    -- Pilih Cuti Khusus --
+                                </option>
+
+                                @foreach ($specialLeaveTypes as $specialLeaveType)
+                                    <option
+                                        value="{{ $specialLeaveType->id }}"
+                                        data-default-days="{{ $specialLeaveType->default_days }}"
+                                        data-description="{{ $specialLeaveType->description }}"
+                                    >
+                                        {{ $specialLeaveType->name }}
+                                        ({{ $specialLeaveType->default_days }} hari)
+                                    </option>
+                                @endforeach
+                            </select>
+
+                            <div
+                                id="modalSpecialLeaveInfo"
+                                class="mt-2 hidden rounded-xl border border-violet-100 bg-white p-3 text-xs leading-5 text-slate-600"
+                            ></div>
+                        </div>
+
+
+                        <div
+                            id="modalAnnualLeaveInfo"
+                            class="hidden rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-700"
+                        >
+                            Sisa cuti tahunan {{ now()->year }}:
+                            {{ $leaveBalance?->remaining ?? 0 }} hari.
+                            Saldo baru berkurang setelah HRD menyetujui.
                         </div>
 
                     </div>
@@ -1107,6 +1245,33 @@
                         </div>
 
 
+                        @if ($item->jenis === 'cuti')
+                            <div class="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+
+                                <span class="text-[11px] text-slate-500 font-bold uppercase block">
+                                    Jenis Cuti
+                                </span>
+
+                                <span class="text-slate-900 font-extrabold text-sm mt-1 block">
+                                    @if ($item->leave_category === 'annual')
+                                        Cuti Tahunan
+                                    @elseif ($item->leave_category === 'special')
+                                        {{ $item->specialLeaveType?->name ?? 'Cuti Khusus' }}
+                                    @else
+                                        -
+                                    @endif
+                                </span>
+
+                                @if ($item->leave_days)
+                                    <span class="mt-1 block text-xs font-bold text-slate-500">
+                                        {{ $item->leave_days }} hari
+                                    </span>
+                                @endif
+
+                            </div>
+                        @endif
+
+
                         <div class="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
 
                             <span class="text-[11px] text-slate-500 font-bold uppercase block">
@@ -1609,10 +1774,284 @@
                     'leaveAttachmentName'
                 );
 
+            const leaveCategoryFields =
+                document.getElementById(
+                    'modalLeaveCategoryFields'
+                );
+
+            const specialLeaveFields =
+                document.getElementById(
+                    'modalSpecialLeaveTypeFields'
+                );
+
+            const specialLeaveSelect =
+                document.getElementById(
+                    'modalSpecialLeaveType'
+                );
+
+            const specialLeaveInfo =
+                document.getElementById(
+                    'modalSpecialLeaveInfo'
+                );
+
+            const annualLeaveInfo =
+                document.getElementById(
+                    'modalAnnualLeaveInfo'
+                );
+
+            const jenisRadios =
+                document.querySelectorAll(
+                    'input[name="jenis"]'
+                );
+
+            const leaveCategoryRadios =
+                document.querySelectorAll(
+                    'input[name="leave_category"]'
+                );
+
+
+            function refreshLeaveCategoryUI() {
+
+                const selectedJenis =
+                    document.querySelector(
+                        'input[name="jenis"]:checked'
+                    )?.value;
+
+                const selectedCategory =
+                    document.querySelector(
+                        'input[name="leave_category"]:checked'
+                    )?.value;
+
+                const hourlyOption =
+                    durasi?.querySelector(
+                        'option[value="hourly"]'
+                    );
+
+
+                if (selectedJenis === 'cuti') {
+
+                    leaveCategoryFields?.classList.remove(
+                        'hidden'
+                    );
+
+                    if (durasi) {
+                        durasi.value = 'full_day';
+                    }
+
+                    hourly?.classList.add(
+                        'hidden'
+                    );
+
+                    if (selesai) {
+                        selesai.readOnly = false;
+                    }
+
+                    if (hourlyOption) {
+                        hourlyOption.disabled = true;
+                    }
+
+
+                    if (!selectedCategory) {
+
+                        const annualRadio =
+                            document.querySelector(
+                                'input[name="leave_category"][value="annual"]'
+                            );
+
+                        const specialRadio =
+                            document.querySelector(
+                                'input[name="leave_category"][value="special"]'
+                            );
+
+                        if (annualRadio) {
+                            annualRadio.checked = true;
+                        } else if (specialRadio) {
+                            specialRadio.checked = true;
+                        }
+                    }
+
+                } else {
+
+                    leaveCategoryFields?.classList.add(
+                        'hidden'
+                    );
+
+                    specialLeaveFields?.classList.add(
+                        'hidden'
+                    );
+
+                    annualLeaveInfo?.classList.add(
+                        'hidden'
+                    );
+
+                    leaveCategoryRadios.forEach(
+                        radio => {
+                            radio.checked = false;
+                        }
+                    );
+
+                    if (specialLeaveSelect) {
+                        specialLeaveSelect.value = '';
+                        specialLeaveSelect.required = false;
+                    }
+
+                    if (hourlyOption) {
+                        hourlyOption.disabled = false;
+                    }
+                }
+
+
+                const currentCategory =
+                    document.querySelector(
+                        'input[name="leave_category"]:checked'
+                    )?.value;
+
+
+                if (
+                    selectedJenis === 'cuti'
+                    &&
+                    currentCategory === 'special'
+                ) {
+
+                    specialLeaveFields?.classList.remove(
+                        'hidden'
+                    );
+
+                    annualLeaveInfo?.classList.add(
+                        'hidden'
+                    );
+
+                    if (specialLeaveSelect) {
+                        specialLeaveSelect.required = true;
+                    }
+
+                } else if (
+                    selectedJenis === 'cuti'
+                    &&
+                    currentCategory === 'annual'
+                ) {
+
+                    specialLeaveFields?.classList.add(
+                        'hidden'
+                    );
+
+                    annualLeaveInfo?.classList.remove(
+                        'hidden'
+                    );
+
+                    if (specialLeaveSelect) {
+                        specialLeaveSelect.value = '';
+                        specialLeaveSelect.required = false;
+                    }
+
+                } else {
+
+                    specialLeaveFields?.classList.add(
+                        'hidden'
+                    );
+
+                    annualLeaveInfo?.classList.add(
+                        'hidden'
+                    );
+
+                    if (specialLeaveSelect) {
+                        specialLeaveSelect.required = false;
+                    }
+                }
+            }
+
+
+            jenisRadios.forEach(
+                radio => {
+                    radio.addEventListener(
+                        'change',
+                        refreshLeaveCategoryUI
+                    );
+                }
+            );
+
+
+            leaveCategoryRadios.forEach(
+                radio => {
+                    radio.addEventListener(
+                        'change',
+                        refreshLeaveCategoryUI
+                    );
+                }
+            );
+
+
+            specialLeaveSelect?.addEventListener(
+                'change',
+                () => {
+
+                    const option =
+                        specialLeaveSelect
+                            .options[
+                                specialLeaveSelect.selectedIndex
+                            ];
+
+                    const days =
+                        option?.dataset
+                            ?.defaultDays;
+
+                    const description =
+                        option?.dataset
+                            ?.description;
+
+
+                    if (
+                        !specialLeaveSelect.value
+                    ) {
+                        specialLeaveInfo?.classList.add(
+                            'hidden'
+                        );
+
+                        if (specialLeaveInfo) {
+                            specialLeaveInfo.textContent = '';
+                        }
+
+                        return;
+                    }
+
+
+                    if (specialLeaveInfo) {
+
+                        specialLeaveInfo.innerHTML =
+                            `<strong>Default ${days || '-'} hari.</strong>`
+                            +
+                            (
+                                description
+                                    ? ` ${description}`
+                                    : ''
+                            );
+
+                        specialLeaveInfo.classList.remove(
+                            'hidden'
+                        );
+                    }
+
+                }
+            );
+
 
             durasi?.addEventListener(
                 'change',
                 () => {
+
+                    const selectedJenis =
+                        document.querySelector(
+                            'input[name="jenis"]:checked'
+                        )?.value;
+
+                    if (
+                        selectedJenis === 'cuti'
+                    ) {
+                        durasi.value = 'full_day';
+                        hourly.classList.add('hidden');
+                        selesai.readOnly = false;
+                        return;
+                    }
 
                     if (
                         durasi.value ===
@@ -1689,6 +2128,9 @@
                 }
             );
 
+
+
+            refreshLeaveCategoryUI();
 
 
             /*

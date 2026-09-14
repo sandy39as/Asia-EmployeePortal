@@ -56,13 +56,18 @@ class LeaveRequest extends Model
         return [
             'tanggal_mulai' => 'date',
             'tanggal_selesai' => 'date',
+
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'local_synced_at' => 'datetime',
+
             'kabag_approved_at' => 'datetime',
             'kabag_rejected_at' => 'datetime',
+
             'hrd_approved_at' => 'datetime',
             'hrd_rejected_at' => 'datetime',
+
+            'leave_days' => 'integer',
         ];
     }
 
