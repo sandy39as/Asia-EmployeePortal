@@ -48,6 +48,7 @@ class FaceLogLeaveRequestController extends Controller
                 'rejectedBy',
 
                 'specialLeaveType',
+                'permissionType',
             ])
             ->where(
                 'kabag_status',
@@ -134,6 +135,7 @@ class FaceLogLeaveRequestController extends Controller
                 'rejectedBy',
 
                 'specialLeaveType',
+                'permissionType',
             ])
             ->where(
                 'uuid',
@@ -180,6 +182,7 @@ class FaceLogLeaveRequestController extends Controller
                     ->with([
                         'employee',
                         'specialLeaveType',
+                        'permissionType',
                     ])
                     ->where(
                         'uuid',
@@ -217,6 +220,7 @@ class FaceLogLeaveRequestController extends Controller
                         'rejectedBy',
 
                         'specialLeaveType',
+                        'permissionType',
                     ]);
                 }
 
@@ -382,6 +386,7 @@ class FaceLogLeaveRequestController extends Controller
                     'rejectedBy',
 
                     'specialLeaveType',
+                    'permissionType',
                 ]);
             }
         );
@@ -430,6 +435,7 @@ class FaceLogLeaveRequestController extends Controller
                     ->with([
                         'employee',
                         'specialLeaveType',
+                        'permissionType',
                     ])
                     ->where(
                         'uuid',
@@ -463,6 +469,7 @@ class FaceLogLeaveRequestController extends Controller
                         'rejectedBy',
 
                         'specialLeaveType',
+                        'permissionType',
                     ]);
                 }
 
@@ -615,6 +622,7 @@ class FaceLogLeaveRequestController extends Controller
                     'rejectedBy',
 
                     'specialLeaveType',
+                    'permissionType',
                 ]);
             }
         );
@@ -938,6 +946,21 @@ class FaceLogLeaveRequestController extends Controller
 
             'jenis' =>
                 $item->jenis,
+
+            /*
+            |--------------------------------------------------------------------------
+            | JENIS IZIN
+            |--------------------------------------------------------------------------
+            */
+
+            'permission_type_id' =>
+                $item->permission_type_id,
+
+            'permission_type_name' =>
+                $item->permissionType?->name,
+
+            'permission_type_code' =>
+                $item->permissionType?->code,
 
             'leave_category' =>
                 $item->leave_category,
