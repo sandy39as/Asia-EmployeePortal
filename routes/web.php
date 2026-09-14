@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Master\KabagController;
 use App\Http\Controllers\Master\KabagMappingController;
 use App\Http\Controllers\Kabag\KabagLeaveRequestController;
+use App\Http\Controllers\Master\SpecialLeaveTypeController;
 
 // Redirect Home
 Route::get('/', function () {
@@ -100,6 +101,19 @@ Route::middleware([
             '/kabag-mapping/{kabag}/employee/{employee}',
             [KabagMappingController::class, 'remove']
         )->name('kabag-mapping.remove');
+
+        Route::resource(
+            '/master/special-leave-types',
+            SpecialLeaveTypeController::class
+        )
+            ->names(
+                'master.special-leave-types'
+            )
+            ->except([
+                'create',
+                'edit',
+                'show',
+            ]);
 
     });
 

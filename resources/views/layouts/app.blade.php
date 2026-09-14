@@ -208,22 +208,26 @@
 
 
                     {{-- DATA KABAG --}}
-                    <a href="{{ route('master.kabag.index') }}"
-                       class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                       {{ request()->routeIs('master.kabag.*')
+                    <a
+                        href="{{ route('master.kabag.index') }}"
+                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
+                        {{ request()->routeIs('master.kabag.*')
                             ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
                             : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                       }}">
-
-                        <svg class="h-5 w-5 text-slate-500"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor">
-
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0" />
+                        }}"
+                    >
+                        <svg
+                            class="h-5 w-5 text-slate-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0"
+                            />
                         </svg>
 
                         Data Kabag
@@ -231,25 +235,56 @@
 
 
                     {{-- MAPPING KABAG --}}
-                    <a href="{{ route('master.kabag-mapping.index') }}"
-                       class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                       {{ request()->routeIs('master.kabag-mapping.*')
+                    <a
+                        href="{{ route('master.kabag-mapping.index') }}"
+                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
+                        {{ request()->routeIs('master.kabag-mapping.*')
                             ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
                             : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                       }}">
-
-                        <svg class="h-5 w-5 text-slate-500"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor">
-
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                        }}"
+                    >
+                        <svg
+                            class="h-5 w-5 text-slate-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
+                            />
                         </svg>
 
                         Mapping Kabag
+                    </a>
+
+
+                    {{-- MASTER CUTI KHUSUS --}}
+                    <a
+                        href="{{ route('master.special-leave-types.index') }}"
+                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
+                        {{ request()->routeIs('master.special-leave-types.*')
+                            ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
+                            : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
+                        }}"
+                    >
+                        <svg
+                            class="h-5 w-5 text-slate-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M8.25 6.75V4.5m7.5 2.25V4.5M3.75 9.75h16.5m-15 10.5h13.5A1.5 1.5 0 0020.25 18.75V7.5A1.5 1.5 0 0018.75 6H5.25A1.5 1.5 0 003.75 7.5v11.25a1.5 1.5 0 001.5 1.5z"
+                            />
+                        </svg>
+
+                        Cuti Khusus
                     </a>
 
                 @endif
