@@ -30,6 +30,14 @@ class KabagLeaveRequestController extends Controller
 
                 'approvedBy',
                 'rejectedBy',
+
+                /*
+                |--------------------------------------------------------------------------
+                | DETAIL JENIS PENGAJUAN
+                |--------------------------------------------------------------------------
+                */
+                'permissionType',
+                'specialLeaveType',
             ])
 
             ->whereIn(

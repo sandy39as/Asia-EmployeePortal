@@ -61,6 +61,7 @@ class HrdLeaveRequestController extends Controller
                 'rejectedBy',
 
                 'specialLeaveType',
+                'permissionType',
             ])
             ->where(
                 'kabag_status',
@@ -223,6 +224,7 @@ class HrdLeaveRequestController extends Controller
             'rejectedBy',
 
             'specialLeaveType',
+            'permissionType',
         ]);
 
 
@@ -256,6 +258,7 @@ class HrdLeaveRequestController extends Controller
                     ->with([
                         'employee',
                         'specialLeaveType',
+                        'permissionType',
                     ])
                     ->whereKey(
                         $leaveRequest->id
