@@ -31,31 +31,36 @@ class KabagLeaveRequestController extends Controller
                 );
 
 
-        $items =
-                    LeaveRequest::query()
-                        ->with([
-                            'employee',
-                            'kabag',
-                            'kabagApprovedBy',
-                            'kabagRejectedBy',
-                            'hrdApprovedBy',
-                            'hrdRejectedBy',
-                            'approvedBy',
-                            'rejectedBy',
-                            'permissionType',
-                            'specialLeaveType',
-                        ])
-                        ->whereIn(
-                            'employee_id',
-                            $employeeIds
-                        )
-                        // Taruh status pending di urutan teratas (0), selain itu di bawah (1)
-                        ->orderByRaw("CASE WHEN kabag_status = 'pending' THEN 0 ELSE 1 END ASC")
-                        ->latest(
-                            'created_at'
-                        )
-                        ->paginate(20)
-                        ->withQueryString();
+            $items =
+                        LeaveRequest::query()
+                            ->with([
+                                'employee',
+                                'kabag',
+                                'kabagApprovedBy',
+                                'kabagRejectedBy',
+                                'hrdApprovedBy',
+                                'hrdRejectedBy',
+                                'approvedBy',
+                                'rejectedBy',
+                                'permissionType',
+                                'specialLeaveType',
+                            ])
+                            ->whereIn(
+                                'employee_id',
+                                $employeeIds
+                            )
+                            ->orderByRaw("
+                                CASE 
+                                    WHEN kabag_status = 'pending' THEN 0
+                                    WHEN kabag_status = 'approved' AND hrd_status = 'pending' THEN 1
+                                    ELSE 2
+                                END ASC
+                            ")
+                            ->latest(
+                                'created_at'
+                            )
+                            ->paginate(20)
+                            ->withQueryString();
 
 
         return view(
