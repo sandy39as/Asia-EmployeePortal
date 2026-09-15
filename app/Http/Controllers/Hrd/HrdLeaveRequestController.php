@@ -165,24 +165,20 @@ class HrdLeaveRequestController extends Controller
                     )
             )
             ->orderByRaw("
-                CASE
-                    WHEN hrd_status = 'pending'
-                        THEN 1
+                            CASE
+                                -- 1. Menunggu HRD (Wajib dieksekusi HRD)
+                                WHEN status != 'cancelled' AND hrd_status = 'pending' THEN 0
 
-                    WHEN hrd_status = 'approved'
-                        THEN 2
+                                -- 2. Sudah selesai diproses HRD (Approved / Rejected)
+                                WHEN status != 'cancelled' AND hrd_status IN ('approved', 'rejected') THEN 1
 
-                    WHEN hrd_status = 'rejected'
-                        THEN 3
-
-                    ELSE 4
-                END
-            ")
-            ->latest(
-                'created_at'
-            )
-            ->paginate(20)
-            ->withQueryString();
+                                -- 3. Dibatalkan oleh karyawan / status lainnya
+                                ELSE 2
+                            END ASC
+                        ")
+                        ->latest('created_at')
+                        ->paginate(20)
+                        ->withQueryString();
 
 
         return view(
