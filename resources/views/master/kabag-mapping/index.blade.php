@@ -230,7 +230,7 @@
                                     id="checkAllVisible"
                                     class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-extrabold text-sky-700 transition hover:bg-sky-100"
                                 >
-                                    Centang Semua Tampil
+                                    Pilih Semua
                                 </button>
 
                                 <button
@@ -238,7 +238,7 @@
                                     id="uncheckAllVisible"
                                     class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-extrabold text-slate-600 transition hover:bg-slate-50"
                                 >
-                                    Hapus Centang Tampil
+                                    Hapus Semua Pilihan
                                 </button>
 
                             </div>
@@ -248,120 +248,288 @@
                     </div>
 
 
-                    {{-- EMPLOYEE LIST --}}
-                    <div class="divide-y divide-slate-100">
+                    {{-- ===================================================== --}}
+                    {{-- EMPLOYEE LIST: SUDAH MASUK & BELUM MASUK --}}
+                    {{-- ===================================================== --}}
+                    @php
+                        $mappedEmployees =
+                            $employees
+                                ->filter(
+                                    fn ($employee) =>
+                                        $selectedEmployeeIds
+                                            ->contains(
+                                                $employee->id
+                                            )
+                                )
+                                ->values();
 
-                        @forelse ($employees as $employee)
-
-                            @php
-                                $isSelected =
-                                    $selectedEmployeeIds
-                                        ->contains(
-                                            $employee->id
-                                        );
-
-                                $otherKabags =
-                                    $employee
-                                        ->kabags
-                                        ->filter(
-                                            fn ($kabag) =>
-                                                $kabag->id
-                                                !==
-                                                $selectedKabag->id
-                                        );
-                            @endphp
-
-
-                            <label
-                                class="employeeMappingRow flex cursor-pointer items-start gap-4 px-5 py-4 transition hover:bg-slate-50"
-                                data-category="{{ $employee->source_kategori_karyawan_name }}"
-                            >
-
-                                <div class="pt-1">
-                                    <input
-                                        type="checkbox"
-                                        name="employee_ids[]"
-                                        value="{{ $employee->id }}"
-                                        @checked($isSelected)
-                                        class="employeeMappingCheckbox h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                                    >
-                                </div>
+                        $unmappedEmployees =
+                            $employees
+                                ->reject(
+                                    fn ($employee) =>
+                                        $selectedEmployeeIds
+                                            ->contains(
+                                                $employee->id
+                                            )
+                                )
+                                ->values();
+                    @endphp
 
 
-                                <div class="min-w-0 flex-1">
+                    <div class="grid grid-cols-1 gap-5 p-5 xl:grid-cols-2">
 
-                                    <div class="flex flex-wrap items-center gap-2">
+                        {{-- ================================================= --}}
+                        {{-- SUDAH MASUK --}}
+                        {{-- ================================================= --}}
+                        <div class="overflow-hidden rounded-2xl border border-emerald-200 bg-white">
 
-                                        <div class="font-extrabold text-slate-900">
-                                            {{ $employee->nama }}
-                                        </div>
+                            <div class="flex items-center justify-between gap-3 border-b border-emerald-100 bg-emerald-50 px-4 py-3">
 
-                                        <span class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500">
-                                            {{ $employee->employee_code ?? '-' }}
-                                        </span>
-
-                                        @if ($employee->source_kategori_karyawan_name)
-                                            <span class="rounded-lg border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-extrabold text-blue-700">
-                                                {{ $employee->source_kategori_karyawan_name }}
-                                            </span>
-                                        @endif
-
+                                <div>
+                                    <div class="text-[10px] font-extrabold uppercase tracking-[0.16em] text-emerald-600">
+                                        Sudah Masuk
                                     </div>
 
-
-                                    <div class="mt-1 text-xs text-slate-500">
-                                        {{ $employee->jabatan ?: 'Jabatan belum diisi' }}
+                                    <div class="mt-0.5 text-sm font-extrabold text-emerald-900">
+                                        Karyawan di bawah {{ $selectedKabag->name }}
                                     </div>
-
-
-                                    @if ($otherKabags->isNotEmpty())
-
-                                        <div class="mt-2 flex flex-wrap items-center gap-1.5">
-
-                                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                                Juga ditangani:
-                                            </span>
-
-                                            @foreach ($otherKabags as $otherKabag)
-                                                <span class="rounded-lg border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">
-                                                    {{ $otherKabag->name }}
-                                                </span>
-                                            @endforeach
-
-                                        </div>
-
-                                    @endif
-
                                 </div>
 
 
-                                <div class="shrink-0">
-
-                                    @if ($isSelected)
-                                        <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
-                                            Terpilih
-                                        </span>
-                                    @endif
-
-                                </div>
-
-                            </label>
-
-                        @empty
-
-                            <div class="px-5 py-12 text-center">
-
-                                <div class="text-sm font-extrabold text-slate-700">
-                                    Tidak ada karyawan.
-                                </div>
-
-                                <div class="mt-1 text-xs text-slate-500">
-                                    Coba ubah pencarian atau filter bagian.
-                                </div>
+                                <span class="inline-flex min-w-8 items-center justify-center rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-black text-white">
+                                    {{ $mappedEmployees->count() }}
+                                </span>
 
                             </div>
 
-                        @endforelse
+
+                            <div class="max-h-[620px] divide-y divide-slate-100 overflow-y-auto">
+
+                                @forelse ($mappedEmployees as $employee)
+
+                                    @php
+                                        $otherKabags =
+                                            $employee
+                                                ->kabags
+                                                ->filter(
+                                                    fn ($kabag) =>
+                                                        $kabag->id
+                                                        !==
+                                                        $selectedKabag->id
+                                                );
+                                    @endphp
+
+
+                                    <label class="employeeMappingRow flex cursor-pointer items-start gap-3 px-4 py-3.5 transition hover:bg-emerald-50/40">
+
+                                        <div class="pt-1">
+                                            <input
+                                                type="checkbox"
+                                                name="employee_ids[]"
+                                                value="{{ $employee->id }}"
+                                                checked
+                                                class="employeeMappingCheckbox h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                            >
+                                        </div>
+
+
+                                        <div class="min-w-0 flex-1">
+
+                                            <div class="flex flex-wrap items-center gap-2">
+
+                                                <div class="font-extrabold text-slate-900">
+                                                    {{ $employee->nama }}
+                                                </div>
+
+                                                <span class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                                    {{ $employee->employee_code ?? '-' }}
+                                                </span>
+
+                                                @if ($employee->source_kategori_karyawan_name)
+                                                    <span class="rounded-lg border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-extrabold text-blue-700">
+                                                        {{ $employee->source_kategori_karyawan_name }}
+                                                    </span>
+                                                @endif
+
+                                            </div>
+
+
+                                            <div class="mt-1 text-xs text-slate-500">
+                                                {{ $employee->jabatan ?: 'Jabatan belum diisi' }}
+                                            </div>
+
+
+                                            @if ($otherKabags->isNotEmpty())
+
+                                                <div class="mt-2 flex flex-wrap items-center gap-1.5">
+
+                                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                        Juga ditangani:
+                                                    </span>
+
+                                                    @foreach ($otherKabags as $otherKabag)
+                                                        <span class="rounded-lg border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">
+                                                            {{ $otherKabag->name }}
+                                                        </span>
+                                                    @endforeach
+
+                                                </div>
+
+                                            @endif
+
+                                        </div>
+
+
+                                        <div class="shrink-0">
+                                            <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-extrabold text-emerald-700">
+                                                Terpilih
+                                            </span>
+                                        </div>
+
+                                    </label>
+
+                                @empty
+
+                                    <div class="px-5 py-12 text-center">
+
+                                        <div class="text-sm font-extrabold text-slate-700">
+                                            Belum ada karyawan.
+                                        </div>
+
+                                        <div class="mt-1 text-xs text-slate-500">
+                                            Belum ada karyawan yang dimapping ke Kabag ini.
+                                        </div>
+
+                                    </div>
+
+                                @endforelse
+
+                            </div>
+
+                        </div>
+
+
+                        {{-- ================================================= --}}
+                        {{-- BELUM MASUK --}}
+                        {{-- ================================================= --}}
+                        <div class="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+
+                            <div class="flex items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-4 py-3">
+
+                                <div>
+                                    <div class="text-[10px] font-extrabold uppercase tracking-[0.16em] text-amber-600">
+                                        Belum Masuk
+                                    </div>
+
+                                    <div class="mt-0.5 text-sm font-extrabold text-amber-900">
+                                        Karyawan yang belum dipilih
+                                    </div>
+                                </div>
+
+
+                                <span class="inline-flex min-w-8 items-center justify-center rounded-full bg-amber-500 px-2.5 py-1 text-xs font-black text-white">
+                                    {{ $unmappedEmployees->count() }}
+                                </span>
+
+                            </div>
+
+
+                            <div class="max-h-[620px] divide-y divide-slate-100 overflow-y-auto">
+
+                                @forelse ($unmappedEmployees as $employee)
+
+                                    @php
+                                        $otherKabags =
+                                            $employee
+                                                ->kabags
+                                                ->filter(
+                                                    fn ($kabag) =>
+                                                        $kabag->id
+                                                        !==
+                                                        $selectedKabag->id
+                                                );
+                                    @endphp
+
+
+                                    <label class="employeeMappingRow flex cursor-pointer items-start gap-3 px-4 py-3.5 transition hover:bg-amber-50/40">
+
+                                        <div class="pt-1">
+                                            <input
+                                                type="checkbox"
+                                                name="employee_ids[]"
+                                                value="{{ $employee->id }}"
+                                                class="employeeMappingCheckbox h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                            >
+                                        </div>
+
+
+                                        <div class="min-w-0 flex-1">
+
+                                            <div class="flex flex-wrap items-center gap-2">
+
+                                                <div class="font-extrabold text-slate-900">
+                                                    {{ $employee->nama }}
+                                                </div>
+
+                                                <span class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                                    {{ $employee->employee_code ?? '-' }}
+                                                </span>
+
+                                                @if ($employee->source_kategori_karyawan_name)
+                                                    <span class="rounded-lg border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-extrabold text-blue-700">
+                                                        {{ $employee->source_kategori_karyawan_name }}
+                                                    </span>
+                                                @endif
+
+                                            </div>
+
+
+                                            <div class="mt-1 text-xs text-slate-500">
+                                                {{ $employee->jabatan ?: 'Jabatan belum diisi' }}
+                                            </div>
+
+
+                                            @if ($otherKabags->isNotEmpty())
+
+                                                <div class="mt-2 flex flex-wrap items-center gap-1.5">
+
+                                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                        Sudah di Kabag lain:
+                                                    </span>
+
+                                                    @foreach ($otherKabags as $otherKabag)
+                                                        <span class="rounded-lg border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-700">
+                                                            {{ $otherKabag->name }}
+                                                        </span>
+                                                    @endforeach
+
+                                                </div>
+
+                                            @endif
+
+                                        </div>
+
+                                    </label>
+
+                                @empty
+
+                                    <div class="px-5 py-12 text-center">
+
+                                        <div class="text-sm font-extrabold text-slate-700">
+                                            Semua karyawan sudah masuk.
+                                        </div>
+
+                                        <div class="mt-1 text-xs text-slate-500">
+                                            Tidak ada karyawan lain pada hasil filter ini.
+                                        </div>
+
+                                    </div>
+
+                                @endforelse
+
+                            </div>
+
+                        </div>
 
                     </div>
 
