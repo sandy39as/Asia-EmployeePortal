@@ -616,38 +616,74 @@
 
                             <div class="border-t border-amber-100 bg-amber-50/60 px-4 py-4">
 
-                                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="flex flex-col gap-3">
 
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                                        <div class="flex flex-wrap items-center gap-2">
+
+                                            <button
+                                                type="button"
+                                                id="selectAllAvailable"
+                                                class="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-extrabold text-amber-700 hover:bg-amber-100"
+                                            >
+                                                Pilih Semua Hasil
+                                            </button>
+
+                                            <div class="text-xs font-semibold text-slate-500">
+                                                Dipilih:
+                                                <span
+                                                    id="selectedAvailableCount"
+                                                    class="font-black text-slate-900"
+                                                >
+                                                    0
+                                                </span>
+                                            </div>
+
+                                        </div>
+
 
                                         <button
-                                            type="button"
-                                            id="selectAllAvailable"
-                                            class="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-extrabold text-amber-700 hover:bg-amber-100"
+                                            type="submit"
+                                            id="assignEmployeesButton"
+                                            class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700"
                                         >
-                                            Pilih Semua Hasil
+                                            Tambahkan yang Dipilih
                                         </button>
-
-                                        <div class="text-xs font-semibold text-slate-500">
-                                            Dipilih:
-                                            <span
-                                                id="selectedAvailableCount"
-                                                class="font-black text-slate-900"
-                                            >
-                                                0
-                                            </span>
-                                        </div>
 
                                     </div>
 
 
-                                    <button
-                                        type="submit"
-                                        id="assignEmployeesButton"
-                                        class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700"
-                                    >
-                                        Tambahkan ke Kabag
-                                    </button>
+                                    <div class="border-t border-amber-200/70 pt-3">
+
+                                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                                            <div class="min-w-0">
+                                                <div class="text-xs font-extrabold text-amber-900">
+                                                    Bulk berdasarkan filter
+                                                </div>
+
+                                                <div class="mt-0.5 text-[11px] leading-5 text-amber-700">
+                                                    Tambahkan semua hasil filter Area + Bagian tanpa perlu mencentang satu per satu.
+                                                    Minimal pilih Area atau Bagian.
+                                                </div>
+                                            </div>
+
+
+                                            <button
+                                                type="button"
+                                                id="openBulkAssignConfirm"
+                                                data-count="{{ $availableEmployees->count() }}"
+                                                data-enabled="{{ (($area ?? '') !== '' || $category !== '') ? '1' : '0' }}"
+                                                class="shrink-0 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                                @disabled(($area ?? '') === '' && $category === '')
+                                            >
+                                                Tambahkan Semua Hasil ({{ $availableEmployees->count() }})
+                                            </button>
+
+                                        </div>
+
+                                    </div>
 
                                 </div>
 
@@ -655,6 +691,37 @@
 
                         @endif
 
+                    </form>
+
+
+                    <form
+                        method="POST"
+                        action="{{ route(
+                            'master.kabag-mapping.assign-filtered',
+                            $selectedKabag
+                        ) }}"
+                        id="bulkAssignFilteredForm"
+                        class="hidden"
+                    >
+                        @csrf
+
+                        <input
+                            type="hidden"
+                            name="search"
+                            value="{{ $search }}"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="category"
+                            value="{{ $category }}"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="area"
+                            value="{{ $area ?? '' }}"
+                        >
                     </form>
 
                 </div>
@@ -672,6 +739,109 @@
             </div>
 
         @endif
+
+    </div>
+
+
+    {{-- ========================================================= --}}
+    {{-- BULK ASSIGN CONFIRM --}}
+    {{-- ========================================================= --}}
+    <div
+        id="bulkAssignConfirmModal"
+        class="fixed inset-0 z-[120] hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+    >
+
+        <div
+            id="bulkAssignConfirmBox"
+            class="w-full max-w-md scale-95 rounded-3xl border border-slate-200 bg-white p-5 opacity-0 shadow-2xl transition-all duration-200"
+        >
+
+            <div class="flex items-start gap-4">
+
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                    <svg
+                        class="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 4v16m8-8H4"
+                        />
+                    </svg>
+                </div>
+
+                <div class="min-w-0">
+
+                    <h3 class="text-lg font-extrabold text-slate-900">
+                        Tambahkan Semua Hasil?
+                    </h3>
+
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        Semua karyawan pada hasil filter saat ini akan ditambahkan ke
+                        <strong>{{ $selectedKabag?->name }}</strong>.
+                    </p>
+
+                    <div class="mt-3 rounded-2xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+
+                        <div>
+                            Area:
+                            <strong>
+                                {{ ($area ?? '') !== '' ? 'Area ' . $area : 'Semua Area' }}
+                            </strong>
+                        </div>
+
+                        <div>
+                            Bagian:
+                            <strong>
+                                {{ $category !== '' ? $category : 'Semua Bagian' }}
+                            </strong>
+                        </div>
+
+                        <div>
+                            Search:
+                            <strong>
+                                {{ $search !== '' ? $search : '-' }}
+                            </strong>
+                        </div>
+
+                        <div class="mt-1">
+                            Hasil saat ini:
+                            <strong>{{ $availableEmployees->count() }} karyawan</strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="mt-5 flex gap-3">
+
+                <button
+                    type="button"
+                    id="cancelBulkAssign"
+                    class="w-1/2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-slate-50"
+                >
+                    Batal
+                </button>
+
+
+                <button
+                    type="button"
+                    id="confirmBulkAssign"
+                    class="w-1/2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-700"
+                >
+                    Ya, Tambahkan
+                </button>
+
+            </div>
+
+        </div>
 
     </div>
 
@@ -706,6 +876,186 @@
                 const assignButton =
                     document.getElementById(
                         'assignEmployeesButton'
+                    );
+
+                const openBulkAssignConfirm =
+                    document.getElementById(
+                        'openBulkAssignConfirm'
+                    );
+
+                const bulkAssignModal =
+                    document.getElementById(
+                        'bulkAssignConfirmModal'
+                    );
+
+                const bulkAssignBox =
+                    document.getElementById(
+                        'bulkAssignConfirmBox'
+                    );
+
+                const cancelBulkAssign =
+                    document.getElementById(
+                        'cancelBulkAssign'
+                    );
+
+                const confirmBulkAssign =
+                    document.getElementById(
+                        'confirmBulkAssign'
+                    );
+
+                const bulkAssignForm =
+                    document.getElementById(
+                        'bulkAssignFilteredForm'
+                    );
+
+
+                function openBulkModal() {
+
+                    if (
+                        ! bulkAssignModal
+                        ||
+                        ! bulkAssignBox
+                    ) {
+                        return;
+                    }
+
+                    bulkAssignModal.classList.remove(
+                        'hidden'
+                    );
+
+                    bulkAssignModal.classList.add(
+                        'flex'
+                    );
+
+                    document.body.classList.add(
+                        'overflow-hidden'
+                    );
+
+                    setTimeout(
+                        function () {
+
+                            bulkAssignBox.classList.remove(
+                                'scale-95',
+                                'opacity-0'
+                            );
+
+                            bulkAssignBox.classList.add(
+                                'scale-100',
+                                'opacity-100'
+                            );
+                        },
+                        10
+                    );
+                }
+
+
+                function closeBulkModal() {
+
+                    if (
+                        ! bulkAssignModal
+                        ||
+                        ! bulkAssignBox
+                    ) {
+                        return;
+                    }
+
+                    bulkAssignBox.classList.remove(
+                        'scale-100',
+                        'opacity-100'
+                    );
+
+                    bulkAssignBox.classList.add(
+                        'scale-95',
+                        'opacity-0'
+                    );
+
+                    setTimeout(
+                        function () {
+
+                            bulkAssignModal.classList.remove(
+                                'flex'
+                            );
+
+                            bulkAssignModal.classList.add(
+                                'hidden'
+                            );
+
+                            document.body.classList.remove(
+                                'overflow-hidden'
+                            );
+                        },
+                        180
+                    );
+                }
+
+
+                openBulkAssignConfirm
+                    ?.addEventListener(
+                        'click',
+                        function () {
+
+                            if (
+                                this.dataset.enabled
+                                !== '1'
+                            ) {
+                                return;
+                            }
+
+                            if (
+                                parseInt(
+                                    this.dataset.count
+                                    ?? '0',
+                                    10
+                                )
+                                <= 0
+                            ) {
+                                return;
+                            }
+
+                            openBulkModal();
+                        }
+                    );
+
+
+                cancelBulkAssign
+                    ?.addEventListener(
+                        'click',
+                        closeBulkModal
+                    );
+
+
+                confirmBulkAssign
+                    ?.addEventListener(
+                        'click',
+                        function () {
+
+                            if (! bulkAssignForm) {
+                                return;
+                            }
+
+                            this.disabled =
+                                true;
+
+                            this.textContent =
+                                'Menambahkan...';
+
+                            bulkAssignForm.submit();
+                        }
+                    );
+
+
+                bulkAssignModal
+                    ?.addEventListener(
+                        'click',
+                        function (event) {
+
+                            if (
+                                event.target
+                                === bulkAssignModal
+                            ) {
+                                closeBulkModal();
+                            }
+                        }
                     );
 
 

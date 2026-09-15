@@ -431,6 +431,13 @@ Route::middleware([
                 'kabag-mapping.assign'
             );
 
+            Route::post(
+                '/kabag-mapping/{kabag}/assign-filtered',
+                [KabagMappingController::class, 'assignFiltered']
+            )->name(
+                'kabag-mapping.assign-filtered'
+            );
+
             Route::delete(
                 '/kabag-mapping/{kabag}/employee/{employee}',
                 [KabagMappingController::class, 'remove']

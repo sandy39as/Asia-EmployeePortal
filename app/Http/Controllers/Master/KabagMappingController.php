@@ -481,6 +481,345 @@ class KabagMappingController extends Controller
     }
 
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | BULK ASSIGN BERDASARKAN FILTER
+    |--------------------------------------------------------------------------
+    |
+    | Digunakan untuk menambahkan semua hasil filter Area + Bagian + Search
+    | ke Kabag yang sedang dipilih.
+    |
+    | Untuk keamanan, minimal Area atau Bagian harus dipilih.
+    |
+    */
+
+    public function assignFiltered(
+        Request $request,
+        User $kabag
+    ) {
+        abort_unless(
+            $kabag->role === 'kabag',
+            404
+        );
+
+
+        $validated =
+            $request->validate(
+                [
+                    'search' => [
+                        'nullable',
+                        'string',
+                        'max:255',
+                    ],
+
+                    'category' => [
+                        'nullable',
+                        'string',
+                        'max:255',
+                    ],
+
+                    'area' => [
+                        'nullable',
+                        Rule::in([
+                            '52',
+                            '27',
+                            'other',
+                        ]),
+                    ],
+                ]
+            );
+
+
+        $search =
+            trim(
+                (string) (
+                    $validated[
+                        'search'
+                    ]
+                    ?? ''
+                )
+            );
+
+        $category =
+            trim(
+                (string) (
+                    $validated[
+                        'category'
+                    ]
+                    ?? ''
+                )
+            );
+
+        $area =
+            trim(
+                (string) (
+                    $validated[
+                        'area'
+                    ]
+                    ?? ''
+                )
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | SAFETY
+        |--------------------------------------------------------------------------
+        |
+        | Jangan izinkan klik bulk tanpa batas Area/Bagian.
+        | Search saja boleh terlalu luas / typo, jadi tidak cukup sebagai filter aman.
+        |
+        */
+
+        if (
+            $category === ''
+            &&
+            $area === ''
+        ) {
+            return redirect()
+                ->route(
+                    'master.kabag-mapping.index',
+                    [
+                        'kabag_id' =>
+                            $kabag->id,
+
+                        'search' =>
+                            $search,
+                    ]
+                )
+                ->withErrors([
+                    'bulk' =>
+                        'Untuk Tambahkan Semua Hasil, pilih minimal Area atau Bagian terlebih dahulu.',
+                ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | QUERY HASIL FILTER
+        |--------------------------------------------------------------------------
+        */
+
+        $employeeIds =
+            Employee::query()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->when(
+                    $search !== '',
+                    function ($query) use ($search) {
+
+                        $query->where(
+                            function ($subQuery) use ($search) {
+
+                                $subQuery
+                                    ->where(
+                                        'nama',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhere(
+                                        'employee_code',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhere(
+                                        'jabatan',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhere(
+                                        'source_kategori_karyawan_name',
+                                        'like',
+                                        "%{$search}%"
+                                    );
+                            }
+                        );
+                    }
+                )
+                ->when(
+                    $category !== '',
+                    fn ($query) =>
+                        $query->where(
+                            'source_kategori_karyawan_name',
+                            $category
+                        )
+                )
+                ->when(
+                    $area === '52',
+                    fn ($query) =>
+                        $query->whereIn(
+                            'source_device_id',
+                            [
+                                1,
+                                2,
+                            ]
+                        )
+                )
+                ->when(
+                    $area === '27',
+                    fn ($query) =>
+                        $query->where(
+                            'source_device_id',
+                            3
+                        )
+                )
+                ->when(
+                    $area === 'other',
+                    fn ($query) =>
+                        $query->where(
+                            function ($subQuery) {
+                                $subQuery
+                                    ->whereNull(
+                                        'source_device_id'
+                                    )
+                                    ->orWhereNotIn(
+                                        'source_device_id',
+                                        [
+                                            1,
+                                            2,
+                                            3,
+                                        ]
+                                    );
+                            }
+                        )
+                )
+                ->pluck(
+                    'id'
+                )
+                ->values()
+                ->all();
+
+
+        if (empty($employeeIds)) {
+            return redirect()
+                ->route(
+                    'master.kabag-mapping.index',
+                    [
+                        'kabag_id' =>
+                            $kabag->id,
+
+                        'search' =>
+                            $search,
+
+                        'category' =>
+                            $category,
+
+                        'area' =>
+                            $area,
+                    ]
+                )
+                ->withErrors([
+                    'bulk' =>
+                        'Tidak ada karyawan yang cocok dengan filter tersebut.',
+                ]);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | HITUNG YANG BELUM TERHUBUNG KE KABAG INI
+        |--------------------------------------------------------------------------
+        */
+
+        $existingIds =
+            $kabag
+                ->managedEmployees()
+                ->whereIn(
+                    'employees.id',
+                    $employeeIds
+                )
+                ->pluck(
+                    'employees.id'
+                )
+                ->map(
+                    fn ($id) =>
+                        (int) $id
+                )
+                ->all();
+
+
+        $newEmployeeIds =
+            array_values(
+                array_diff(
+                    $employeeIds,
+                    $existingIds
+                )
+            );
+
+
+        if (empty($newEmployeeIds)) {
+            return redirect()
+                ->route(
+                    'master.kabag-mapping.index',
+                    [
+                        'kabag_id' =>
+                            $kabag->id,
+
+                        'search' =>
+                            $search,
+
+                        'category' =>
+                            $category,
+
+                        'area' =>
+                            $area,
+                    ]
+                )
+                ->with(
+                    'success',
+                    'Semua karyawan pada hasil filter tersebut sudah masuk ke '
+                    . $kabag->name
+                    . '.'
+                );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | MULTI-KABAG SAFE
+        |--------------------------------------------------------------------------
+        |
+        | Tidak menghapus mapping lama dan tidak mengganggu Kabag lain.
+        |
+        */
+
+        $kabag
+            ->managedEmployees()
+            ->syncWithoutDetaching(
+                $newEmployeeIds
+            );
+
+
+        return redirect()
+            ->route(
+                'master.kabag-mapping.index',
+                [
+                    'kabag_id' =>
+                        $kabag->id,
+
+                    'search' =>
+                        $search,
+
+                    'category' =>
+                        $category,
+
+                    'area' =>
+                        $area,
+                ]
+            )
+            ->with(
+                'success',
+                count($newEmployeeIds)
+                . ' karyawan dari hasil filter berhasil ditambahkan ke '
+                . $kabag->name
+                . '.'
+            );
+    }
+
+
     /*
     |--------------------------------------------------------------------------
     | HAPUS SATU MAPPING
