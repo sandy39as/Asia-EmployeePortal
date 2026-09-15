@@ -3,198 +3,528 @@
 use App\Http\Controllers\FirstPasswordController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Hrd\HrdLeaveRequestController;
+
 use App\Http\Controllers\Hrd\HrdEmployeeController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Hrd\HrdLeaveRequestController;
+
+use App\Http\Controllers\Kabag\KabagLeaveRequestController;
+
 use App\Http\Controllers\Master\KabagController;
 use App\Http\Controllers\Master\KabagMappingController;
-use App\Http\Controllers\Kabag\KabagLeaveRequestController;
-use App\Http\Controllers\Master\SpecialLeaveTypeController;
 use App\Http\Controllers\Master\PermissionTypeController;
+use App\Http\Controllers\Master\SpecialLeaveTypeController;
 
-// Redirect Home
-Route::get('/', function () {
-    if (!auth()->check()) {
-        return redirect()->route('login');
+use Illuminate\Support\Facades\Route;
+
+
+/*
+|--------------------------------------------------------------------------
+| HOME
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/',
+    function () {
+
+        if (! auth()->check()) {
+            return redirect()
+                ->route(
+                    'login'
+                );
+        }
+
+        $user =
+            auth()->user();
+
+
+        if (
+            in_array(
+                $user->role,
+                [
+                    'hrd',
+                    'admin',
+                    'superadmin',
+                ],
+                true
+            )
+        ) {
+            return redirect()
+                ->route(
+                    'hrd.leave-requests.index'
+                );
+        }
+
+
+        if (
+            $user->role === 'kabag'
+        ) {
+            return redirect()
+                ->route(
+                    'kabag.leave-requests.index'
+                );
+        }
+
+
+        return redirect()
+            ->route(
+                'leave-requests.index'
+            );
     }
+);
 
-    $user = auth()->user();
 
-    if (in_array($user->role, ['hrd', 'admin', 'superadmin'], true)) {
-        return redirect()->route('hrd.leave-requests.index');
-    }
+/*
+|--------------------------------------------------------------------------
+| PASSWORD FIRST CHANGE
+|--------------------------------------------------------------------------
+*/
 
-    return redirect()->route('leave-requests.index');
-});
+Route::middleware(
+    'auth'
+)
+    ->group(
+        function () {
 
-// Password First Change
-Route::middleware('auth')->group(function () {
-    Route::get('/password/first-change', [FirstPasswordController::class, 'edit'])->name('password.first.edit');
-    Route::post('/password/first-change', [FirstPasswordController::class, 'update'])->name('password.first.update');
-});
+            Route::get(
+                '/password/first-change',
+                [
+                    FirstPasswordController::class,
+                    'edit',
+                ]
+            )
+                ->name(
+                    'password.first.edit'
+                );
 
-// Karyawan Routes
-Route::middleware('auth')->group(function () {
-    // Redirect alias dashboard lama ke pengajuan
-    Route::get('/dashboard', fn() => redirect()->route('leave-requests.index'))->name('dashboard');
 
-    Route::get('/pengajuan', [LeaveRequestController::class, 'index'])->name('leave-requests.index');
-    Route::get('/pengajuan/buat', [LeaveRequestController::class, 'create'])->name('leave-requests.create');
-    Route::post('/pengajuan', [LeaveRequestController::class, 'store'])->name('leave-requests.store');
-    Route::get('/pengajuan/{leaveRequest}', [LeaveRequestController::class, 'show'])->name('leave-requests.show');
-    Route::post('/pengajuan/{leaveRequest}/cancel', [LeaveRequestController::class, 'cancel'])->name('leave-requests.cancel');
-});
+            Route::post(
+                '/password/first-change',
+                [
+                    FirstPasswordController::class,
+                    'update',
+                ]
+            )
+                ->name(
+                    'password.first.update'
+                );
+        }
+    );
 
-// HRD Routes
-Route::middleware(['auth', 'hrd'])
-    ->prefix('hrd')
-    ->name('hrd.')
-    ->group(function () {
-        // Redirect alias dashboard HRD lama ke pengajuan
-        Route::get('/dashboard', fn() => redirect()->route('hrd.leave-requests.index'))->name('dashboard');
 
-        Route::get('/pengajuan', [HrdLeaveRequestController::class, 'index'])->name('leave-requests.index');
-        Route::get('/pengajuan/{leaveRequest}', [HrdLeaveRequestController::class, 'show'])->name('leave-requests.show');
-        Route::post('/pengajuan/{leaveRequest}/approve', [HrdLeaveRequestController::class, 'approve'])->name('leave-requests.approve');
-        Route::post('/pengajuan/{leaveRequest}/reject', [HrdLeaveRequestController::class, 'reject'])->name('leave-requests.reject');
+/*
+|--------------------------------------------------------------------------
+| KARYAWAN
+|--------------------------------------------------------------------------
+*/
 
-        Route::get('/karyawan', [HrdEmployeeController::class, 'index'])->name('employees.index');
-        Route::post('/karyawan/{employee}/reset-password', [HrdEmployeeController::class, 'resetPassword'])->name('employees.reset-password');
-    });
+Route::middleware(
+    'auth'
+)
+    ->group(
+        function () {
 
-// Profile Routes
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
+            Route::get(
+                '/dashboard',
+                fn () =>
+                    redirect()
+                        ->route(
+                            'leave-requests.index'
+                        )
+            )
+                ->name(
+                    'dashboard'
+                );
 
-// Kabag Routes
+
+            Route::get(
+                '/pengajuan',
+                [
+                    LeaveRequestController::class,
+                    'index',
+                ]
+            )
+                ->name(
+                    'leave-requests.index'
+                );
+
+
+            Route::get(
+                '/pengajuan/buat',
+                [
+                    LeaveRequestController::class,
+                    'create',
+                ]
+            )
+                ->name(
+                    'leave-requests.create'
+                );
+
+
+            Route::post(
+                '/pengajuan',
+                [
+                    LeaveRequestController::class,
+                    'store',
+                ]
+            )
+                ->name(
+                    'leave-requests.store'
+                );
+
+
+            Route::get(
+                '/pengajuan/{leaveRequest}',
+                [
+                    LeaveRequestController::class,
+                    'show',
+                ]
+            )
+                ->name(
+                    'leave-requests.show'
+                );
+
+
+            Route::post(
+                '/pengajuan/{leaveRequest}/cancel',
+                [
+                    LeaveRequestController::class,
+                    'cancel',
+                ]
+            )
+                ->name(
+                    'leave-requests.cancel'
+                );
+        }
+    );
+
+
+/*
+|--------------------------------------------------------------------------
+| HRD
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware([
     'auth',
-    'portal.master-admin',
+    'hrd',
 ])
-    ->prefix('master')
-    ->name('master.')
-    ->group(function () {
+    ->prefix(
+        'hrd'
+    )
+    ->name(
+        'hrd.'
+    )
+    ->group(
+        function () {
 
-        Route::resource(
-            'kabag',
-            KabagController::class
-        )->except('show');
-
-
-        Route::get(
-            '/kabag-mapping',
-            [KabagMappingController::class, 'index']
-        )->name('kabag-mapping.index');
-
-        Route::get(
-            '/kabag-mapping/{kabag}',
-            [KabagMappingController::class, 'show']
-        )->name('kabag-mapping.show');
-
-        Route::post(
-            '/kabag-mapping/{kabag}/assign',
-            [KabagMappingController::class, 'assign']
-        )->name('kabag-mapping.assign');
-
-        Route::delete(
-            '/kabag-mapping/{kabag}/employee/{employee}',
-            [KabagMappingController::class, 'remove']
-        )->name('kabag-mapping.remove');
-
-        Route::get(
-            '/master/kabag-mapping',
-            [KabagMappingController::class, 'index']
-        )->name(
-            'master.kabag-mapping.index'
-        );
-
-        Route::put(
-            '/master/kabag-mapping/{kabag}',
-            [KabagMappingController::class, 'update']
-        )->name(
-            'master.kabag-mapping.update'
-        );
+            Route::get(
+                '/dashboard',
+                fn () =>
+                    redirect()
+                        ->route(
+                            'hrd.leave-requests.index'
+                        )
+            )
+                ->name(
+                    'dashboard'
+                );
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | MASTER CUTI KHUSUS
-        |--------------------------------------------------------------------------
-        */
-
-        Route::resource(
-            'special-leave-types',
-            SpecialLeaveTypeController::class
-        )->except([
-            'create',
-            'edit',
-            'show',
-        ]);
-
-    });
+            Route::get(
+                '/pengajuan',
+                [
+                    HrdLeaveRequestController::class,
+                    'index',
+                ]
+            )
+                ->name(
+                    'leave-requests.index'
+                );
 
 
-// kabag
+            Route::get(
+                '/pengajuan/{leaveRequest}',
+                [
+                    HrdLeaveRequestController::class,
+                    'show',
+                ]
+            )
+                ->name(
+                    'leave-requests.show'
+                );
+
+
+            Route::post(
+                '/pengajuan/{leaveRequest}/approve',
+                [
+                    HrdLeaveRequestController::class,
+                    'approve',
+                ]
+            )
+                ->name(
+                    'leave-requests.approve'
+                );
+
+
+            Route::post(
+                '/pengajuan/{leaveRequest}/reject',
+                [
+                    HrdLeaveRequestController::class,
+                    'reject',
+                ]
+            )
+                ->name(
+                    'leave-requests.reject'
+                );
+
+
+            Route::get(
+                '/karyawan',
+                [
+                    HrdEmployeeController::class,
+                    'index',
+                ]
+            )
+                ->name(
+                    'employees.index'
+                );
+
+
+            Route::post(
+                '/karyawan/{employee}/reset-password',
+                [
+                    HrdEmployeeController::class,
+                    'resetPassword',
+                ]
+            )
+                ->name(
+                    'employees.reset-password'
+                );
+        }
+    );
+
+
+/*
+|--------------------------------------------------------------------------
+| KABAG
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware([
     'auth',
     'kabag',
 ])
-    ->prefix('kabag')
-    ->name('kabag.')
-    ->group(function () {
+    ->prefix(
+        'kabag'
+    )
+    ->name(
+        'kabag.'
+    )
+    ->group(
+        function () {
 
-        Route::get(
-            '/pengajuan',
-            [KabagLeaveRequestController::class, 'index']
-        )->name('leave-requests.index');
+            Route::get(
+                '/pengajuan',
+                [
+                    KabagLeaveRequestController::class,
+                    'index',
+                ]
+            )
+                ->name(
+                    'leave-requests.index'
+                );
 
 
-        Route::post(
-            '/pengajuan/{leaveRequest}/approve',
-            [KabagLeaveRequestController::class, 'approve']
-        )->name('leave-requests.approve');
+            Route::post(
+                '/pengajuan/{leaveRequest}/approve',
+                [
+                    KabagLeaveRequestController::class,
+                    'approve',
+                ]
+            )
+                ->name(
+                    'leave-requests.approve'
+                );
 
 
-        Route::post(
-            '/pengajuan/{leaveRequest}/reject',
-            [KabagLeaveRequestController::class, 'reject']
-        )->name('leave-requests.reject');
+            Route::post(
+                '/pengajuan/{leaveRequest}/reject',
+                [
+                    KabagLeaveRequestController::class,
+                    'reject',
+                ]
+            )
+                ->name(
+                    'leave-requests.reject'
+                );
+        }
+    );
 
-    });
+
+/*
+|--------------------------------------------------------------------------
+| MASTER DATA
+|--------------------------------------------------------------------------
+|
+| Semua route master hanya untuk master admin.
+|
+| Prefix sudah "master", jadi route di dalam group JANGAN ditulis
+| "/master/..." lagi.
+|
+| Name prefix sudah "master.", jadi name di dalam group JANGAN ditulis
+| "master...." lagi.
+|
+*/
 
 Route::middleware([
     'auth',
     'portal.master-admin',
 ])
-    ->prefix('master')
-    ->name('master.')
-    ->group(function () {
+    ->prefix(
+        'master'
+    )
+    ->name(
+        'master.'
+    )
+    ->group(
+        function () {
 
-        Route::resource(
-            'kabag',
-            KabagController::class
-        )->except('show');
+            /*
+            |--------------------------------------------------------------------------
+            | MASTER KABAG
+            |--------------------------------------------------------------------------
+            */
 
-        Route::resource(
-            'special-leave-types',
-            SpecialLeaveTypeController::class
-        )->except([
-            'create',
-            'edit',
-            'show',
-        ]);
+            Route::resource(
+                'kabag',
+                KabagController::class
+            )
+                ->except(
+                    'show'
+                );
 
-        Route::resource(
-            'permission-types',
-            PermissionTypeController::class
-        )->except([
-            'create',
-            'edit',
-            'show',
-        ]);
-    });
 
-require __DIR__.'/auth.php';
+            /*
+            |--------------------------------------------------------------------------
+            | MAPPING KABAG
+            |--------------------------------------------------------------------------
+            |
+            | Route name:
+            |
+            | master.kabag-mapping.index
+            | master.kabag-mapping.update
+            |
+            */
+
+            Route::get(
+                '/kabag-mapping',
+                [
+                    KabagMappingController::class,
+                    'index',
+                ]
+            )
+                ->name(
+                    'kabag-mapping.index'
+                );
+
+
+            Route::put(
+                '/kabag-mapping/{kabag}',
+                [
+                    KabagMappingController::class,
+                    'update',
+                ]
+            )
+                ->name(
+                    'kabag-mapping.update'
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | MASTER CUTI KHUSUS
+            |--------------------------------------------------------------------------
+            */
+
+            Route::resource(
+                'special-leave-types',
+                SpecialLeaveTypeController::class
+            )
+                ->except([
+                    'create',
+                    'edit',
+                    'show',
+                ]);
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | MASTER JENIS IZIN
+            |--------------------------------------------------------------------------
+            */
+
+            Route::resource(
+                'permission-types',
+                PermissionTypeController::class
+            )
+                ->except([
+                    'create',
+                    'edit',
+                    'show',
+                ]);
+        }
+    );
+
+
+/*
+|--------------------------------------------------------------------------
+| PROFILE
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(
+    'auth'
+)
+    ->group(
+        function () {
+
+            Route::get(
+                '/profile',
+                [
+                    ProfileController::class,
+                    'edit',
+                ]
+            )
+                ->name(
+                    'profile.edit'
+                );
+
+
+            Route::patch(
+                '/profile',
+                [
+                    ProfileController::class,
+                    'update',
+                ]
+            )
+                ->name(
+                    'profile.update'
+                );
+
+
+            Route::delete(
+                '/profile',
+                [
+                    ProfileController::class,
+                    'destroy',
+                ]
+            )
+                ->name(
+                    'profile.destroy'
+                );
+        }
+    );
+
+
+require __DIR__ . '/auth.php';
