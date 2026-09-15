@@ -15,6 +15,10 @@ class HrdEmployeeController extends Controller
 {
     public function index(Request $request): View
     {
+        $user = $request->user();
+        $email = strtolower(trim($user->email ?? ''));
+        $name = strtolower(trim($user->name ?? ''));
+
         $search = trim(
             (string) $request->get('search', '')
         );
@@ -36,10 +40,57 @@ class HrdEmployeeController extends Controller
             $leaveYear = (int) now()->year;
         }
 
-        $employees = Employee::query()
+        /*
+        |--------------------------------------------------------------------------
+        | BASE QUERY & SCOPE HRD LOGIN
+        |--------------------------------------------------------------------------
+        | Sandy (Super HRD): Akses semua data tanpa batasan.
+        | admin@asia.com (Asia 52): Device 1 & 2 (Asia + Outsourcing).
+        | hrdasia52@gmail.com: Device 1 & 2 (Asia saja).
+        | hrdoutsourcing52@gmail.com: Device 1 & 2 (Outsourcing saja).
+        | Asia 27 (admin27@asia.com / adminasia27@gmail.com): Device 3.
+        */
+        $baseQuery = Employee::query();
+
+        $isSuperHrd = in_array($email, [
+            'sandyramdani65@gmail.com',
+        ], true) || str_contains($name, 'sandy');
+
+        if (! $isSuperHrd) {
+            // 1. Asia 52 (device 1 & 2, Asia & Outsourcing)
+            if ($email === 'admin@asia.com') {
+                $baseQuery->whereIn('source_device_id', [1, 2]);
+            }
+            // 2. HRD ASIA 52 (device 1 & 2, hanya ASIA)
+            elseif ($email === 'hrdasia52@gmail.com') {
+                $baseQuery->whereIn('source_device_id', [1, 2])
+                    ->where(function ($q) {
+                        $q->where('source_kategori_karyawan_name', 'like', '%ASIA%')
+                            ->where('source_kategori_karyawan_name', 'not like', '%OUT%');
+                    });
+            }
+            // 3. HRD OUTSOURCING 52 (device 1 & 2, hanya OUTSOURCING)
+            elseif ($email === 'hrdoutsourcing52@gmail.com') {
+                $baseQuery->whereIn('source_device_id', [1, 2])
+                    ->where(function ($q) {
+                        $q->where('source_kategori_karyawan_name', 'like', '%OUT%')
+                            ->orWhere('source_kategori_karyawan_name', 'like', '%OUTSOURCING%');
+                    });
+            }
+            // 4. Asia 27 (device 3)
+            elseif (in_array($email, ['admin27@asia.com', 'adminasia27@gmail.com'], true)) {
+                $baseQuery->where('source_device_id', 3);
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | QUERY LIST KARYAWAN
+        |--------------------------------------------------------------------------
+        */
+        $employees = (clone $baseQuery)
             ->with([
                 'user',
-
                 'leaveBalances' =>
                     fn ($query) =>
                         $query->where(
@@ -47,7 +98,6 @@ class HrdEmployeeController extends Controller
                             $leaveYear
                         ),
             ])
-
             ->when(
                 $search !== '',
                 function ($query) use ($search) {
@@ -83,7 +133,6 @@ class HrdEmployeeController extends Controller
                     );
                 }
             )
-
             ->when(
                 $status === 'active',
                 fn ($query) =>
@@ -92,7 +141,6 @@ class HrdEmployeeController extends Controller
                         true
                     )
             )
-
             ->when(
                 $status === 'inactive',
                 fn ($query) =>
@@ -101,94 +149,51 @@ class HrdEmployeeController extends Controller
                         false
                     )
             )
-
             ->orderBy('nama')
             ->paginate(25)
             ->withQueryString();
-
 
         /*
         |--------------------------------------------------------------------------
         | PASTIKAN KARYAWAN ASIA PUNYA SALDO TAHUN TERPILIH
         |--------------------------------------------------------------------------
-        |
-        | Jika row saldo belum ada, helper leaveBalanceForYear() akan membuat:
-        | entitlement = 12
-        | used        = 0
-        | remaining   = 12
-        |
-        | Outsourcing tidak dibuatkan saldo annual.
-        |
         */
-
         foreach ($employees->getCollection() as $employee) {
-
             if (! $employee->isAsiaEmployee()) {
                 continue;
             }
 
-            $balance =
-                $employee
-                    ->leaveBalances
-                    ->first();
+            $balance = $employee->leaveBalances->first();
 
             if (! $balance) {
-
-                $balance =
-                    $employee
-                        ->leaveBalanceForYear(
-                            $leaveYear
-                        );
-
-                $employee->setRelation(
-                    'leaveBalances',
-                    collect([$balance])
-                );
+                $balance = $employee->leaveBalanceForYear($leaveYear);
+                $employee->setRelation('leaveBalances', collect([$balance]));
             }
         }
 
-
+        /*
+        |--------------------------------------------------------------------------
+        | SUMMARY CARDS (Dihitung dari $baseQuery yang sudah difilter)
+        |--------------------------------------------------------------------------
+        */
         $summary = [
-            'total' =>
-                Employee::count(),
+            'total' => (clone $baseQuery)->count(),
 
-            'active' =>
-                Employee::where(
-                    'is_active',
-                    true
-                )->count(),
+            'active' => (clone $baseQuery)->where('is_active', true)->count(),
 
-            'inactive' =>
-                Employee::where(
-                    'is_active',
-                    false
-                )->count(),
+            'inactive' => (clone $baseQuery)->where('is_active', false)->count(),
 
-            'must_change_password' =>
-                Employee::query()
-                    ->whereHas(
-                        'user',
-                        fn ($q) =>
-                            $q->where(
-                                'must_change_password',
-                                true
-                            )
-                    )
-                    ->count(),
+            'must_change_password' => (clone $baseQuery)
+                ->whereHas(
+                    'user',
+                    fn ($q) => $q->where('must_change_password', true)
+                )
+                ->count(),
 
-            'asia' =>
-                Employee::where(
-                    'employment_group',
-                    'asia'
-                )->count(),
+            'asia' => (clone $baseQuery)->where('employment_group', 'asia')->count(),
 
-            'outsourcing' =>
-                Employee::where(
-                    'employment_group',
-                    'outsourcing'
-                )->count(),
+            'outsourcing' => (clone $baseQuery)->where('employment_group', 'outsourcing')->count(),
         ];
-
 
         return view(
             'hrd.employees.index',
@@ -202,133 +207,64 @@ class HrdEmployeeController extends Controller
         );
     }
 
-
     public function resetPassword(
         Request $request,
         Employee $employee
     ): RedirectResponse|JsonResponse {
-
         $employee->load('user');
-
-        $user =
-            $employee->user;
-
+        $user = $employee->user;
 
         if (! $user) {
-
             if ($request->expectsJson()) {
-
                 return response()->json(
-                    [
-                        'message' =>
-                            'Akun login karyawan belum tersedia.',
-                    ],
+                    ['message' => 'Akun login karyawan belum tersedia.'],
                     422
                 );
             }
 
-
-            return back()->with(
-                'error',
-                'Akun login karyawan belum tersedia.'
-            );
+            return back()->with('error', 'Akun login karyawan belum tersedia.');
         }
-
 
         if ($user->role !== 'karyawan') {
-
             if ($request->expectsJson()) {
-
                 return response()->json(
-                    [
-                        'message' =>
-                            'Password akun HRD/Admin tidak dapat direset dari halaman ini.',
-                    ],
+                    ['message' => 'Password akun HRD/Admin tidak dapat direset dari halaman ini.'],
                     422
                 );
             }
 
-
-            return back()->with(
-                'error',
-                'Password akun HRD/Admin tidak dapat direset dari halaman ini.'
-            );
+            return back()->with('error', 'Password akun HRD/Admin tidak dapat direset dari halaman ini.');
         }
 
+        $temporaryPassword = (string) random_int(100000, 999999);
 
-        $temporaryPassword =
-            (string) random_int(
-                100000,
-                999999
-            );
-
-
-        DB::transaction(
-            function () use (
-                $user,
-                $temporaryPassword
-            ) {
-
-                $user->update([
-                    'password' =>
-                        Hash::make(
-                            $temporaryPassword
-                        ),
-
-                    'must_change_password' =>
-                        true,
-                ]);
-            }
-        );
-
+        DB::transaction(function () use ($user, $temporaryPassword) {
+            $user->update([
+                'password' => Hash::make($temporaryPassword),
+                'must_change_password' => true,
+            ]);
+        });
 
         $result = [
-            'nama' =>
-                $employee->nama,
-
-            'username' =>
-                $user->username,
-
-            'password' =>
-                $temporaryPassword,
+            'nama' => $employee->nama,
+            'username' => $user->username,
+            'password' => $temporaryPassword,
         ];
 
-
         if ($request->expectsJson()) {
-
             return response()->json([
                 'success' => true,
-
-                'message' =>
-                    'Password berhasil direset.',
-
-                'data' =>
-                    $result,
+                'message' => 'Password berhasil direset.',
+                'data' => $result,
             ]);
         }
 
-
         return redirect()
-            ->route(
-                'hrd.employees.index',
-                [
-                    'search' =>
-                        $employee->employee_code,
-
-                    'leave_year' =>
-                        $request->get(
-                            'leave_year',
-                            now()->year
-                        ),
-                ]
-            )
-            ->with(
-                'reset_password_result',
-                $result
-            )
-            ->with(
-                'success',
-                'Password berhasil direset.'
-            );
+            ->route('hrd.employees.index', [
+                'search' => $employee->employee_code,
+                'leave_year' => $request->get('leave_year', now()->year),
+            ])
+            ->with('reset_password_result', $result)
+            ->with('success', 'Password berhasil direset.');
     }
 }
