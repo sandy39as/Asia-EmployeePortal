@@ -6,199 +6,347 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class KabagMappingController extends Controller
 {
     public function index(Request $request)
     {
-        $search = trim(
-            (string) $request->get('search', '')
-        );
+        $kabagId =
+            $request->integer(
+                'kabag_id'
+            );
 
-        $kabags = User::query()
-            ->where('role', 'kabag')
-            ->withCount('managedEmployees')
-            ->when(
-                $search !== '',
-                function ($query) use ($search) {
-                    $query->where(function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%")
-                            ->orWhere('username', 'like', "%{$search}%");
-                    });
-                }
-            )
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+        $search =
+            trim(
+                (string) $request->get(
+                    'search',
+                    ''
+                )
+            );
+
+        $category =
+            trim(
+                (string) $request->get(
+                    'category',
+                    ''
+                )
+            );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | DAFTAR KABAG
+        |--------------------------------------------------------------------------
+        */
+
+        $kabags =
+            User::query()
+                ->where(
+                    'role',
+                    'kabag'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->orderBy(
+                    'name'
+                )
+                ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | KABAG TERPILIH
+        |--------------------------------------------------------------------------
+        */
+
+        $selectedKabag =
+            $kabagId
+                ? $kabags->firstWhere(
+                    'id',
+                    $kabagId
+                )
+                : $kabags->first();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | KATEGORI EMPLOYEE
+        |--------------------------------------------------------------------------
+        */
+
+        $categories =
+            Employee::query()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->whereNotNull(
+                    'source_kategori_karyawan_name'
+                )
+                ->where(
+                    'source_kategori_karyawan_name',
+                    '<>',
+                    ''
+                )
+                ->distinct()
+                ->orderBy(
+                    'source_kategori_karyawan_name'
+                )
+                ->pluck(
+                    'source_kategori_karyawan_name'
+                );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | EMPLOYEE
+        |--------------------------------------------------------------------------
+        */
+
+        $employees =
+            Employee::query()
+                ->with([
+                    'kabags' => function ($query) {
+                        $query
+                            ->where(
+                                'users.is_active',
+                                true
+                            )
+                            ->orderBy(
+                                'users.name'
+                            );
+                    },
+                ])
+                ->where(
+                    'is_active',
+                    true
+                )
+
+                ->when(
+                    $search !== '',
+                    function ($query) use (
+                        $search
+                    ) {
+                        $query->where(
+                            function ($subQuery) use (
+                                $search
+                            ) {
+                                $subQuery
+                                    ->where(
+                                        'nama',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhere(
+                                        'employee_code',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhere(
+                                        'jabatan',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhere(
+                                        'source_kategori_karyawan_name',
+                                        'like',
+                                        "%{$search}%"
+                                    );
+                            }
+                        );
+                    }
+                )
+
+                ->when(
+                    $category !== '',
+                    fn ($query) =>
+                        $query->where(
+                            'source_kategori_karyawan_name',
+                            $category
+                        )
+                )
+
+                ->orderBy(
+                    'source_kategori_karyawan_name'
+                )
+                ->orderBy(
+                    'nama'
+                )
+                ->get();
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | EMPLOYEE YANG SUDAH DIMAPPING KE KABAG TERPILIH
+        |--------------------------------------------------------------------------
+        */
+
+        $selectedEmployeeIds =
+            collect();
+
+        if ($selectedKabag) {
+            $selectedEmployeeIds =
+                $selectedKabag
+                    ->managedEmployees()
+                    ->pluck(
+                        'employees.id'
+                    );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | SUMMARY
+        |--------------------------------------------------------------------------
+        */
+
+        $summary = [
+            'total_kabag' =>
+                $kabags->count(),
+
+            'total_employee' =>
+                Employee::query()
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->count(),
+
+            'mapped_to_selected' =>
+                $selectedEmployeeIds
+                    ->count(),
+
+            'unmapped' =>
+                Employee::query()
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->whereDoesntHave(
+                        'kabags'
+                    )
+                    ->count(),
+        ];
+
 
         return view(
             'master.kabag-mapping.index',
             compact(
                 'kabags',
-                'search'
+                'selectedKabag',
+                'employees',
+                'selectedEmployeeIds',
+                'categories',
+                'search',
+                'category',
+                'summary'
             )
         );
     }
 
-    public function show(
+
+    public function update(
         Request $request,
         User $kabag
     ) {
+        /*
+        |--------------------------------------------------------------------------
+        | VALIDASI KABAG
+        |--------------------------------------------------------------------------
+        */
+
         abort_unless(
             $kabag->role === 'kabag',
             404
         );
 
-        $search = trim(
-            (string) $request->get('search', '')
-        );
 
-        $assignedEmployees = $kabag
-            ->managedEmployees()
-            ->orderBy('nama')
-            ->paginate(
-                20,
-                ['*'],
-                'assigned_page'
+        $validated =
+            $request->validate(
+                [
+                    'employee_ids' => [
+                        'nullable',
+                        'array',
+                    ],
+
+                    'employee_ids.*' => [
+                        'integer',
+
+                        Rule::exists(
+                            'employees',
+                            'id'
+                        )->where(
+                            fn ($query) =>
+                                $query->where(
+                                    'is_active',
+                                    true
+                                )
+                        ),
+                    ],
+                ],
+                [
+                    'employee_ids.array' =>
+                        'Data karyawan tidak valid.',
+
+                    'employee_ids.*.exists' =>
+                        'Salah satu karyawan tidak ditemukan atau sudah tidak aktif.',
+                ]
             );
 
-        $assignedEmployeeIds = $kabag
-            ->managedEmployees()
-            ->pluck('employees.id');
 
-        $availableEmployees = Employee::query()
-            ->where('is_active', true)
-            ->whereNotIn(
-                'id',
-                $assignedEmployeeIds
+        $employeeIds =
+            collect(
+                $validated[
+                    'employee_ids'
+                ]
+                ?? []
             )
-            ->when(
-                $search !== '',
-                function ($query) use ($search) {
-                    $query->where(
-                        function ($q) use ($search) {
-                            $q->where(
-                                'nama',
-                                'like',
-                                "%{$search}%"
-                            )
-                            ->orWhere(
-                                'employee_code',
-                                'like',
-                                "%{$search}%"
-                            )
-                            ->orWhere(
-                                'jabatan',
-                                'like',
-                                "%{$search}%"
-                            );
-                        }
-                    );
-                }
-            )
-            ->orderBy('nama')
-            ->limit(50)
-            ->get();
-
-        return view(
-            'master.kabag-mapping.show',
-            compact(
-                'kabag',
-                'assignedEmployees',
-                'availableEmployees',
-                'search'
-            )
-        );
-    }
-
-    public function assign(
-        Request $request,
-        User $kabag
-    ) {
-        abort_unless(
-            $kabag->role === 'kabag',
-            404
-        );
-
-        $validated = $request->validate([
-            'employee_id' => [
-                'required',
-                'integer',
-                'exists:employees,id',
-            ],
-        ]);
-
-        $employeeId = (int) $validated['employee_id'];
-
-        DB::transaction(function () use (
-            $kabag,
-            $employeeId
-        ) {
-
-            DB::table('kabag_employee')
-                ->where(
-                    'employee_id',
-                    $employeeId
+                ->map(
+                    fn ($id) =>
+                        (int) $id
                 )
-                ->delete();
+                ->unique()
+                ->values()
+                ->all();
 
-            DB::table('kabag_employee')
-                ->insert([
-                    'kabag_user_id' =>
-                        $kabag->id,
 
-                    'employee_id' =>
-                        $employeeId,
+        /*
+        |--------------------------------------------------------------------------
+        | SYNC KHUSUS UNTUK KABAG INI
+        |--------------------------------------------------------------------------
+        |
+        | Aman untuk multi-Kabag.
+        |
+        | sync() hanya mengubah pasangan milik $kabag ini.
+        | Mapping employee dengan Kabag lain tidak akan terhapus.
+        |
+        */
 
-                    'created_at' =>
-                        now(),
-
-                    'updated_at' =>
-                        now(),
-                ]);
-        });
-
-        return redirect()
-            ->route(
-                'master.kabag-mapping.show',
-                $kabag
-            )
-            ->with(
-                'success',
-                'Karyawan berhasil dimasukkan ke Kabag.'
+        $kabag
+            ->managedEmployees()
+            ->sync(
+                $employeeIds
             );
-    }
 
-    public function remove(
-        User $kabag,
-        Employee $employee
-    ) {
-        abort_unless(
-            $kabag->role === 'kabag',
-            404
-        );
-
-        DB::table('kabag_employee')
-            ->where(
-                'kabag_user_id',
-                $kabag->id
-            )
-            ->where(
-                'employee_id',
-                $employee->id
-            )
-            ->delete();
 
         return redirect()
             ->route(
-                'master.kabag-mapping.show',
-                $kabag
+                'master.kabag-mapping.index',
+                [
+                    'kabag_id' =>
+                        $kabag->id,
+                ]
             )
             ->with(
                 'success',
-                'Karyawan berhasil dikeluarkan dari Kabag.'
+                'Mapping Kabag '
+                . $kabag->name
+                . ' berhasil diperbarui. Total karyawan: '
+                . count($employeeIds)
+                . '.'
             );
     }
 }

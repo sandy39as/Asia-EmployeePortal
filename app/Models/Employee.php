@@ -4,8 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Employee extends Model
 {
@@ -46,22 +47,49 @@ class Employee extends Model
         return $this->hasMany(LeaveRequest::class);
     }
 
-    public function kabag()
+    /*
+    |--------------------------------------------------------------------------
+    | MULTI-KABAG
+    |--------------------------------------------------------------------------
+    |
+    | Satu employee dapat memiliki lebih dari satu Kabag.
+    | Method kabag() dipertahankan agar kode lama tetap kompatibel.
+    |
+    */
+
+    public function kabag(): BelongsToMany
     {
         return $this->belongsToMany(
-            \App\Models\User::class,
+            User::class,
             'kabag_employee',
             'employee_id',
             'kabag_user_id'
         )
-        ->where('users.role', 'kabag')
-        ->withTimestamps();
+            ->where(
+                'users.role',
+                'kabag'
+            )
+            ->withTimestamps();
     }
 
-    public function leaveBalances()
+    /*
+    |--------------------------------------------------------------------------
+    | ALIAS PLURAL
+    |--------------------------------------------------------------------------
+    |
+    | Untuk kode baru, nama kabags() lebih jelas karena relasinya many-to-many.
+    |
+    */
+
+    public function kabags(): BelongsToMany
+    {
+        return $this->kabag();
+    }
+
+    public function leaveBalances(): HasMany
     {
         return $this->hasMany(
-            \App\Models\EmployeeLeaveBalance::class
+            EmployeeLeaveBalance::class
         );
     }
 
@@ -95,5 +123,4 @@ class Employee extends Model
                 ]
             );
     }
-
 }

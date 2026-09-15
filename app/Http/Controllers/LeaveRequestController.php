@@ -248,19 +248,28 @@ class LeaveRequestController extends Controller
         |--------------------------------------------------------------------------
         | CEK KABAG
         |--------------------------------------------------------------------------
+        |
+        | Satu employee boleh memiliki lebih dari satu Kabag.
+        | Pengajuan tidak langsung dikunci ke salah satu Kabag.
+        | Semua Kabag yang ter-mapping dapat melihat pengajuan pending dan
+        | Kabag yang memproses pertama akan tercatat sebagai approver/rejector.
+        |
         */
 
-        $kabag =
+        $kabags =
             $employee
                 ->kabag()
                 ->where(
                     'users.is_active',
                     true
                 )
-                ->first();
+                ->orderBy(
+                    'users.name'
+                )
+                ->get();
 
 
-        if (! $kabag) {
+        if ($kabags->isEmpty()) {
 
             $message =
                 'Pengajuan belum dapat dikirim karena karyawan belum memiliki Kabag. '
@@ -837,8 +846,19 @@ class LeaveRequestController extends Controller
                     'employee_id' =>
                         $employee->id,
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | KABAG BELUM DIPILIH
+                    |--------------------------------------------------------------------------
+                    |
+                    | NULL saat submit agar semua Kabag yang ter-mapping ke employee
+                    | dapat melihat pengajuan. Diisi ketika salah satu Kabag
+                    | approve/reject.
+                    |
+                    */
+
                     'kabag_user_id' =>
-                        $kabag->id,
+                        null,
 
                     'jenis' =>
                         $validated['jenis'],
@@ -962,9 +982,7 @@ class LeaveRequestController extends Controller
                 'success' => true,
 
                 'message' =>
-                    'Pengajuan berhasil dikirim dan menunggu persetujuan '
-                    . $kabag->name
-                    . '.',
+                    'Pengajuan berhasil dikirim dan menunggu persetujuan Kabag.',
 
                 'data' => [
                     'id' =>
@@ -997,13 +1015,18 @@ class LeaveRequestController extends Controller
                     'hrd_status' =>
                         $leaveRequest->hrd_status,
 
-                    'kabag' => [
-                        'id' =>
-                            $kabag->id,
+                    'kabags' =>
+                        $kabags
+                            ->map(
+                                fn ($kabag) => [
+                                    'id' =>
+                                        $kabag->id,
 
-                        'name' =>
-                            $kabag->name,
-                    ],
+                                    'name' =>
+                                        $kabag->name,
+                                ]
+                            )
+                            ->values(),
                 ],
             ]);
         }
@@ -1015,9 +1038,7 @@ class LeaveRequestController extends Controller
             )
             ->with(
                 'success',
-                'Pengajuan berhasil dikirim dan menunggu persetujuan '
-                . $kabag->name
-                . '.'
+                'Pengajuan berhasil dikirim dan menunggu persetujuan Kabag.'
             );
     }
 

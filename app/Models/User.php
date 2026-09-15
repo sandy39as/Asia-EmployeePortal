@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -40,7 +41,9 @@ class User extends Authenticatable
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(
+            Employee::class
+        );
     }
 
     public function isHrd(): bool
@@ -61,19 +64,19 @@ class User extends Authenticatable
         return $this->role === 'karyawan';
     }
 
-    public function managedEmployees()
-    {
-        return $this->belongsToMany(
-            \App\Models\Employee::class,
-            'kabag_employee',
-            'kabag_user_id',
-            'employee_id'
-        )->withTimestamps();
-    }
-
     public function isKabag(): bool
     {
         return $this->role === 'kabag';
     }
 
+    public function managedEmployees(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Employee::class,
+            'kabag_employee',
+            'kabag_user_id',
+            'employee_id'
+        )
+            ->withTimestamps();
+    }
 }

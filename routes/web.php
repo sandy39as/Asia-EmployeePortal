@@ -104,6 +104,20 @@ Route::middleware([
             [KabagMappingController::class, 'remove']
         )->name('kabag-mapping.remove');
 
+        Route::get(
+            '/master/kabag-mapping',
+            [KabagMappingController::class, 'index']
+        )->name(
+            'master.kabag-mapping.index'
+        );
+
+        Route::put(
+            '/master/kabag-mapping/{kabag}',
+            [KabagMappingController::class, 'update']
+        )->name(
+            'master.kabag-mapping.update'
+        );
+
 
         /*
         |--------------------------------------------------------------------------

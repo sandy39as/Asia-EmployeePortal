@@ -13,50 +13,68 @@ class KabagLeaveRequestController extends Controller
     {
         $kabag = $request->user();
 
-        $employeeIds = $kabag
-            ->managedEmployees()
-            ->pluck('employees.id');
+        /*
+        |--------------------------------------------------------------------------
+        | EMPLOYEE YANG DITANGANI KABAG
+        |--------------------------------------------------------------------------
+        |
+        | Pivot kabag_employee sekarang many-to-many.
+        | Satu employee dapat muncul pada lebih dari satu Kabag.
+        |
+        */
 
-        $items = LeaveRequest::query()
-            ->with([
-                'employee',
+        $employeeIds =
+            $kabag
+                ->managedEmployees()
+                ->pluck(
+                    'employees.id'
+                );
 
-                'kabag',
-                'kabagApprovedBy',
-                'kabagRejectedBy',
 
-                'hrdApprovedBy',
-                'hrdRejectedBy',
+        $items =
+            LeaveRequest::query()
+                ->with([
+                    'employee',
 
-                'approvedBy',
-                'rejectedBy',
+                    'kabag',
+                    'kabagApprovedBy',
+                    'kabagRejectedBy',
+
+                    'hrdApprovedBy',
+                    'hrdRejectedBy',
+
+                    'approvedBy',
+                    'rejectedBy',
+
+                    'permissionType',
+                    'specialLeaveType',
+                ])
 
                 /*
                 |--------------------------------------------------------------------------
-                | DETAIL JENIS PENGAJUAN
+                | SEMUA PENGAJUAN EMPLOYEE YANG DITANGANI
                 |--------------------------------------------------------------------------
+                |
+                | Tidak lagi membatasi kabag_user_id.
+                |
+                | Saat pending, semua Kabag yang ter-mapping dapat melihat.
+                | Setelah diproses, Kabag lain tetap dapat melihat histori, tetapi
+                | tombol action hilang karena kabag_status bukan pending lagi.
+                |
                 */
-                'permissionType',
-                'specialLeaveType',
-            ])
 
-            ->whereIn(
-                'employee_id',
-                $employeeIds
-            )
+                ->whereIn(
+                    'employee_id',
+                    $employeeIds
+                )
 
-            ->where(function ($query) use ($kabag) {
-                $query
-                    ->whereNull('kabag_user_id')
-                    ->orWhere(
-                        'kabag_user_id',
-                        $kabag->id
-                    );
-            })
+                ->latest(
+                    'created_at'
+                )
 
-            ->latest('created_at')
-            ->paginate(20)
-            ->withQueryString();
+                ->paginate(20)
+                ->withQueryString();
+
 
         return view(
             'kabag.leave-requests.index',
@@ -72,64 +90,136 @@ class KabagLeaveRequestController extends Controller
         Request $request,
         LeaveRequest $leaveRequest
     ) {
-        $kabag = $request->user();
+        $kabag =
+            $request->user();
+
 
         $this->ensureEmployeeBelongsToKabag(
             $kabag,
             $leaveRequest
         );
 
-        if (
-            $leaveRequest->kabag_status !== 'pending'
-        ) {
-            return back()->with(
-                'error',
-                'Pengajuan ini sudah diproses oleh Kabag.'
+
+        $result =
+            DB::transaction(
+                function () use (
+                    $kabag,
+                    $leaveRequest
+                ) {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | LOCK PENGAJUAN
+                    |--------------------------------------------------------------------------
+                    |
+                    | Jika dua Kabag menekan approve hampir bersamaan, hanya request
+                    | pertama yang berhasil. Request kedua menunggu lock lalu melihat
+                    | status sudah bukan pending.
+                    |
+                    */
+
+                    $item =
+                        LeaveRequest::query()
+                            ->whereKey(
+                                $leaveRequest->id
+                            )
+                            ->lockForUpdate()
+                            ->firstOrFail();
+
+
+                    $this->ensureEmployeeBelongsToKabag(
+                        $kabag,
+                        $item
+                    );
+
+
+                    if (
+                        $item->kabag_status
+                        !== 'pending'
+                    ) {
+                        return [
+                            'success' =>
+                                false,
+
+                            'message' =>
+                                'Pengajuan ini sudah diproses oleh Kabag '
+                                . (
+                                    $item->kabagApprovedBy?->name
+                                    ?? $item->kabagRejectedBy?->name
+                                    ?? $item->kabag?->name
+                                    ?? 'lain'
+                                )
+                                . '.',
+                        ];
+                    }
+
+
+                    $now =
+                        now();
+
+
+                    $item->update([
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | KABAG YANG MEMPROSES
+                        |--------------------------------------------------------------------------
+                        */
+
+                        'kabag_user_id' =>
+                            $kabag->id,
+
+                        'kabag_status' =>
+                            'approved',
+
+                        'kabag_approved_by' =>
+                            $kabag->id,
+
+                        'kabag_approved_at' =>
+                            $now,
+
+                        'kabag_rejected_by' =>
+                            null,
+
+                        'kabag_rejected_at' =>
+                            null,
+
+                        'kabag_rejection_reason' =>
+                            null,
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | TERUSKAN KE HRD
+                        |--------------------------------------------------------------------------
+                        */
+
+                        'hrd_status' =>
+                            'pending',
+
+                        'status' =>
+                            'pending',
+
+                        'local_sync_status' =>
+                            'pending',
+                    ]);
+
+
+                    return [
+                        'success' =>
+                            true,
+
+                        'message' =>
+                            'Pengajuan berhasil disetujui Kabag dan diteruskan ke HRD.',
+                    ];
+                }
             );
-        }
 
-        DB::transaction(function () use (
-            $kabag,
-            $leaveRequest
-        ) {
-            $now = now();
-
-            $leaveRequest->update([
-                'kabag_user_id' =>
-                    $kabag->id,
-
-                'kabag_status' =>
-                    'approved',
-
-                'kabag_approved_by' =>
-                    $kabag->id,
-
-                'kabag_approved_at' =>
-                    $now,
-
-                'kabag_rejected_by' =>
-                    null,
-
-                'kabag_rejected_at' =>
-                    null,
-
-                'kabag_rejection_reason' =>
-                    null,
-
-                'hrd_status' =>
-                    'pending',
-
-                'status' =>
-                    'pending',
-
-                'local_sync_status' =>
-                    'pending',
-            ]);
-        });
 
         return back()->with(
-            'success',
-            'Pengajuan berhasil disetujui Kabag dan diteruskan ke HRD.'
+            $result['success']
+                ? 'success'
+                : 'error',
+            $result['message']
         );
     }
 
@@ -138,79 +228,150 @@ class KabagLeaveRequestController extends Controller
         Request $request,
         LeaveRequest $leaveRequest
     ) {
-        $kabag = $request->user();
+        $kabag =
+            $request->user();
+
 
         $this->ensureEmployeeBelongsToKabag(
             $kabag,
             $leaveRequest
         );
 
-        $validated = $request->validate(
-            [
-                'rejection_reason' => [
-                    'required',
-                    'string',
-                    'max:1000',
+
+        $validated =
+            $request->validate(
+                [
+                    'rejection_reason' => [
+                        'required',
+                        'string',
+                        'max:1000',
+                    ],
                 ],
-            ],
-            [
-                'rejection_reason.required' =>
-                    'Alasan penolakan wajib diisi.',
-            ]
-        );
-
-        if (
-            $leaveRequest->kabag_status !== 'pending'
-        ) {
-            return back()->with(
-                'error',
-                'Pengajuan ini sudah diproses oleh Kabag.'
+                [
+                    'rejection_reason.required' =>
+                        'Alasan penolakan wajib diisi.',
+                ]
             );
-        }
 
-        DB::transaction(function () use (
-            $kabag,
-            $leaveRequest,
-            $validated
-        ) {
-            $now = now();
 
-            $leaveRequest->update([
-                'kabag_user_id' =>
-                    $kabag->id,
+        $result =
+            DB::transaction(
+                function () use (
+                    $kabag,
+                    $leaveRequest,
+                    $validated
+                ) {
 
-                'kabag_status' =>
-                    'rejected',
+                    /*
+                    |--------------------------------------------------------------------------
+                    | LOCK PENGAJUAN
+                    |--------------------------------------------------------------------------
+                    */
 
-                'kabag_rejected_by' =>
-                    $kabag->id,
+                    $item =
+                        LeaveRequest::query()
+                            ->whereKey(
+                                $leaveRequest->id
+                            )
+                            ->lockForUpdate()
+                            ->firstOrFail();
 
-                'kabag_rejected_at' =>
-                    $now,
 
-                'kabag_rejection_reason' =>
-                    $validated['rejection_reason'],
+                    $this->ensureEmployeeBelongsToKabag(
+                        $kabag,
+                        $item
+                    );
 
-                'kabag_approved_by' =>
-                    null,
 
-                'kabag_approved_at' =>
-                    null,
+                    if (
+                        $item->kabag_status
+                        !== 'pending'
+                    ) {
+                        return [
+                            'success' =>
+                                false,
 
-                'hrd_status' =>
-                    'waiting',
+                            'message' =>
+                                'Pengajuan ini sudah diproses oleh Kabag '
+                                . (
+                                    $item->kabagApprovedBy?->name
+                                    ?? $item->kabagRejectedBy?->name
+                                    ?? $item->kabag?->name
+                                    ?? 'lain'
+                                )
+                                . '.',
+                        ];
+                    }
 
-                'status' =>
-                    'rejected',
 
-                'local_sync_status' =>
-                    'pending',
-            ]);
-        });
+                    $now =
+                        now();
+
+
+                    $item->update([
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | KABAG YANG MEMPROSES
+                        |--------------------------------------------------------------------------
+                        */
+
+                        'kabag_user_id' =>
+                            $kabag->id,
+
+                        'kabag_status' =>
+                            'rejected',
+
+                        'kabag_rejected_by' =>
+                            $kabag->id,
+
+                        'kabag_rejected_at' =>
+                            $now,
+
+                        'kabag_rejection_reason' =>
+                            $validated[
+                                'rejection_reason'
+                            ],
+
+                        'kabag_approved_by' =>
+                            null,
+
+                        'kabag_approved_at' =>
+                            null,
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | FINAL DITOLAK DI KABAG
+                        |--------------------------------------------------------------------------
+                        */
+
+                        'hrd_status' =>
+                            'waiting',
+
+                        'status' =>
+                            'rejected',
+
+                        'local_sync_status' =>
+                            'pending',
+                    ]);
+
+
+                    return [
+                        'success' =>
+                            true,
+
+                        'message' =>
+                            'Pengajuan berhasil ditolak oleh Kabag.',
+                    ];
+                }
+            );
+
 
         return back()->with(
-            'success',
-            'Pengajuan berhasil ditolak oleh Kabag.'
+            $result['success']
+                ? 'success'
+                : 'error',
+            $result['message']
         );
     }
 
@@ -219,13 +380,17 @@ class KabagLeaveRequestController extends Controller
         $kabag,
         LeaveRequest $leaveRequest
     ): void {
-        $allowed = $kabag
-            ->managedEmployees()
-            ->where(
-                'employees.id',
-                $leaveRequest->employee_id
-            )
-            ->exists();
+
+        $allowed =
+            $kabag
+                ->managedEmployees()
+                ->where(
+                    'employees.id',
+                    $leaveRequest
+                        ->employee_id
+                )
+                ->exists();
+
 
         abort_unless(
             $allowed,

@@ -234,33 +234,6 @@
                     </a>
 
 
-                    {{-- MAPPING KABAG --}}
-                    <a
-                        href="{{ route('master.kabag-mapping.index') }}"
-                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                        {{ request()->routeIs('master.kabag-mapping.*')
-                            ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
-                            : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                        }}"
-                    >
-                        <svg
-                            class="h-5 w-5 text-slate-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
-                            />
-                        </svg>
-
-                        Mapping Kabag
-                    </a>
-
-
                     {{-- MASTER CUTI KHUSUS --}}
                     <a
                         href="{{ route('master.special-leave-types.index') }}"
@@ -315,6 +288,22 @@
 
                         Jenis Izin
                     </a>
+
+                    {{-- MASTER MAPPING KABAG --}}
+                    <a
+                        href="{{ route('master.kabag-mapping.index') }}"
+                        class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition
+                            {{
+                                request()->routeIs('master.kabag-mapping.*')
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                            }}"
+                    >
+                        <span>
+                            Mapping Kabag
+                        </span>
+                    </a>
+
 
                 @endif
 
