@@ -50,6 +50,9 @@ class KabagMappingController extends Controller
                     'is_active',
                     true
                 )
+                ->withCount(
+                    'managedEmployees'
+                )
                 ->orderBy(
                     'name'
                 )
@@ -73,7 +76,7 @@ class KabagMappingController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | KATEGORI EMPLOYEE
+        | KATEGORI / BAGIAN
         |--------------------------------------------------------------------------
         */
 
@@ -102,11 +105,68 @@ class KabagMappingController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | EMPLOYEE
+        | SUDAH MASUK KE KABAG TERPILIH
         |--------------------------------------------------------------------------
+        |
+        | PENTING:
+        | List ini TIDAK terkena search/filter.
+        | Jadi melakukan pencarian tidak akan membuat mapping lama "hilang"
+        | dari form ataupun terhapus saat menyimpan.
+        |
         */
 
-        $employees =
+        $mappedEmployees =
+            collect();
+
+        $mappedEmployeeIds =
+            collect();
+
+        if ($selectedKabag) {
+
+            $mappedEmployees =
+                $selectedKabag
+                    ->managedEmployees()
+                    ->with([
+                        'kabags' => function ($query) {
+                            $query
+                                ->where(
+                                    'users.is_active',
+                                    true
+                                )
+                                ->orderBy(
+                                    'users.name'
+                                );
+                        },
+                    ])
+                    ->orderBy(
+                        'source_kategori_karyawan_name'
+                    )
+                    ->orderBy(
+                        'nama'
+                    )
+                    ->get();
+
+            $mappedEmployeeIds =
+                $mappedEmployees
+                    ->pluck(
+                        'id'
+                    );
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | BELUM MASUK KE KABAG TERPILIH
+        |--------------------------------------------------------------------------
+        |
+        | Search dan filter HANYA bekerja di daftar ini.
+        |
+        | "Belum masuk" berarti belum terhubung ke KABAG YANG SEDANG DIPILIH.
+        | Employee tetap boleh sudah punya Kabag lain karena sistem multi-Kabag.
+        |
+        */
+
+        $availableEmployees =
             Employee::query()
                 ->with([
                     'kabags' => function ($query) {
@@ -124,16 +184,21 @@ class KabagMappingController extends Controller
                     'is_active',
                     true
                 )
-
+                ->when(
+                    $mappedEmployeeIds->isNotEmpty(),
+                    fn ($query) =>
+                        $query->whereNotIn(
+                            'id',
+                            $mappedEmployeeIds
+                        )
+                )
                 ->when(
                     $search !== '',
-                    function ($query) use (
-                        $search
-                    ) {
+                    function ($query) use ($search) {
+
                         $query->where(
-                            function ($subQuery) use (
-                                $search
-                            ) {
+                            function ($subQuery) use ($search) {
+
                                 $subQuery
                                     ->where(
                                         'nama',
@@ -159,7 +224,6 @@ class KabagMappingController extends Controller
                         );
                     }
                 )
-
                 ->when(
                     $category !== '',
                     fn ($query) =>
@@ -168,7 +232,6 @@ class KabagMappingController extends Controller
                             $category
                         )
                 )
-
                 ->orderBy(
                     'source_kategori_karyawan_name'
                 )
@@ -176,25 +239,6 @@ class KabagMappingController extends Controller
                     'nama'
                 )
                 ->get();
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | EMPLOYEE YANG SUDAH DIMAPPING KE KABAG TERPILIH
-        |--------------------------------------------------------------------------
-        */
-
-        $selectedEmployeeIds =
-            collect();
-
-        if ($selectedKabag) {
-            $selectedEmployeeIds =
-                $selectedKabag
-                    ->managedEmployees()
-                    ->pluck(
-                        'employees.id'
-                    );
-        }
 
 
         /*
@@ -216,10 +260,10 @@ class KabagMappingController extends Controller
                     ->count(),
 
             'mapped_to_selected' =>
-                $selectedEmployeeIds
+                $mappedEmployeeIds
                     ->count(),
 
-            'unmapped' =>
+            'unmapped_all' =>
                 Employee::query()
                     ->where(
                         'is_active',
@@ -237,8 +281,8 @@ class KabagMappingController extends Controller
             compact(
                 'kabags',
                 'selectedKabag',
-                'employees',
-                'selectedEmployeeIds',
+                'mappedEmployees',
+                'availableEmployees',
                 'categories',
                 'search',
                 'category',
@@ -248,16 +292,22 @@ class KabagMappingController extends Controller
     }
 
 
-    public function update(
+    /*
+    |--------------------------------------------------------------------------
+    | TAMBAHKAN EMPLOYEE KE KABAG
+    |--------------------------------------------------------------------------
+    |
+    | syncWithoutDetaching() adalah kunci untuk multi-Kabag:
+    | - mapping Kabag ini bertambah
+    | - mapping lama Kabag ini tetap ada
+    | - mapping employee ke Kabag lain juga tetap aman
+    |
+    */
+
+    public function assign(
         Request $request,
         User $kabag
     ) {
-        /*
-        |--------------------------------------------------------------------------
-        | VALIDASI KABAG
-        |--------------------------------------------------------------------------
-        */
-
         abort_unless(
             $kabag->role === 'kabag',
             404
@@ -268,8 +318,9 @@ class KabagMappingController extends Controller
             $request->validate(
                 [
                     'employee_ids' => [
-                        'nullable',
+                        'required',
                         'array',
+                        'min:1',
                     ],
 
                     'employee_ids.*' => [
@@ -288,8 +339,11 @@ class KabagMappingController extends Controller
                     ],
                 ],
                 [
-                    'employee_ids.array' =>
-                        'Data karyawan tidak valid.',
+                    'employee_ids.required' =>
+                        'Pilih minimal satu karyawan.',
+
+                    'employee_ids.min' =>
+                        'Pilih minimal satu karyawan.',
 
                     'employee_ids.*.exists' =>
                         'Salah satu karyawan tidak ditemukan atau sudah tidak aktif.',
@@ -302,7 +356,6 @@ class KabagMappingController extends Controller
                 $validated[
                     'employee_ids'
                 ]
-                ?? []
             )
                 ->map(
                     fn ($id) =>
@@ -313,21 +366,9 @@ class KabagMappingController extends Controller
                 ->all();
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | SYNC KHUSUS UNTUK KABAG INI
-        |--------------------------------------------------------------------------
-        |
-        | Aman untuk multi-Kabag.
-        |
-        | sync() hanya mengubah pasangan milik $kabag ini.
-        | Mapping employee dengan Kabag lain tidak akan terhapus.
-        |
-        */
-
         $kabag
             ->managedEmployees()
-            ->sync(
+            ->syncWithoutDetaching(
                 $employeeIds
             );
 
@@ -342,10 +383,54 @@ class KabagMappingController extends Controller
             )
             ->with(
                 'success',
-                'Mapping Kabag '
+                count($employeeIds)
+                . ' karyawan berhasil ditambahkan ke '
                 . $kabag->name
-                . ' berhasil diperbarui. Total karyawan: '
-                . count($employeeIds)
+                . '.'
+            );
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | HAPUS SATU MAPPING
+    |--------------------------------------------------------------------------
+    |
+    | detach hanya menghapus hubungan employee dengan Kabag yang sedang dipilih.
+    | Hubungan employee dengan Kabag lain tidak ikut terhapus.
+    |
+    */
+
+    public function remove(
+        User $kabag,
+        Employee $employee
+    ) {
+        abort_unless(
+            $kabag->role === 'kabag',
+            404
+        );
+
+
+        $kabag
+            ->managedEmployees()
+            ->detach(
+                $employee->id
+            );
+
+
+        return redirect()
+            ->route(
+                'master.kabag-mapping.index',
+                [
+                    'kabag_id' =>
+                        $kabag->id,
+                ]
+            )
+            ->with(
+                'success',
+                $employee->nama
+                . ' berhasil dilepas dari '
+                . $kabag->name
                 . '.'
             );
     }
