@@ -150,7 +150,7 @@ class HrdEmployeeController extends Controller
                     )
             )
             ->orderBy('nama')
-            ->paginate(25)
+            ->paginate(10)
             ->withQueryString();
 
         /*
