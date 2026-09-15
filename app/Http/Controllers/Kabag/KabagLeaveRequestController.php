@@ -32,48 +32,30 @@ class KabagLeaveRequestController extends Controller
 
 
         $items =
-            LeaveRequest::query()
-                ->with([
-                    'employee',
-
-                    'kabag',
-                    'kabagApprovedBy',
-                    'kabagRejectedBy',
-
-                    'hrdApprovedBy',
-                    'hrdRejectedBy',
-
-                    'approvedBy',
-                    'rejectedBy',
-
-                    'permissionType',
-                    'specialLeaveType',
-                ])
-
-                /*
-                |--------------------------------------------------------------------------
-                | SEMUA PENGAJUAN EMPLOYEE YANG DITANGANI
-                |--------------------------------------------------------------------------
-                |
-                | Tidak lagi membatasi kabag_user_id.
-                |
-                | Saat pending, semua Kabag yang ter-mapping dapat melihat.
-                | Setelah diproses, Kabag lain tetap dapat melihat histori, tetapi
-                | tombol action hilang karena kabag_status bukan pending lagi.
-                |
-                */
-
-                ->whereIn(
-                    'employee_id',
-                    $employeeIds
-                )
-
-                ->latest(
-                    'created_at'
-                )
-
-                ->paginate(20)
-                ->withQueryString();
+                    LeaveRequest::query()
+                        ->with([
+                            'employee',
+                            'kabag',
+                            'kabagApprovedBy',
+                            'kabagRejectedBy',
+                            'hrdApprovedBy',
+                            'hrdRejectedBy',
+                            'approvedBy',
+                            'rejectedBy',
+                            'permissionType',
+                            'specialLeaveType',
+                        ])
+                        ->whereIn(
+                            'employee_id',
+                            $employeeIds
+                        )
+                        // Taruh status pending di urutan teratas (0), selain itu di bawah (1)
+                        ->orderByRaw("CASE WHEN kabag_status = 'pending' THEN 0 ELSE 1 END ASC")
+                        ->latest(
+                            'created_at'
+                        )
+                        ->paginate(20)
+                        ->withQueryString();
 
 
         return view(
