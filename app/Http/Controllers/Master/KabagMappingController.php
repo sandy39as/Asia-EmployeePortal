@@ -33,6 +33,29 @@ class KabagMappingController extends Controller
                 )
             );
 
+        $area =
+            trim(
+                (string) $request->get(
+                    'area',
+                    ''
+                )
+            );
+
+        if (
+            ! in_array(
+                $area,
+                [
+                    '',
+                    '52',
+                    '27',
+                    'other',
+                ],
+                true
+            )
+        ) {
+            $area = '';
+        }
+
 
         /*
         |--------------------------------------------------------------------------
@@ -232,6 +255,45 @@ class KabagMappingController extends Controller
                             $category
                         )
                 )
+                ->when(
+                    $area === '52',
+                    fn ($query) =>
+                        $query->whereIn(
+                            'source_device_id',
+                            [
+                                1,
+                                2,
+                            ]
+                        )
+                )
+                ->when(
+                    $area === '27',
+                    fn ($query) =>
+                        $query->where(
+                            'source_device_id',
+                            3
+                        )
+                )
+                ->when(
+                    $area === 'other',
+                    fn ($query) =>
+                        $query->where(
+                            function ($subQuery) {
+                                $subQuery
+                                    ->whereNull(
+                                        'source_device_id'
+                                    )
+                                    ->orWhereNotIn(
+                                        'source_device_id',
+                                        [
+                                            1,
+                                            2,
+                                            3,
+                                        ]
+                                    );
+                            }
+                        )
+                )
                 ->orderBy(
                     'source_kategori_karyawan_name'
                 )
@@ -273,6 +335,33 @@ class KabagMappingController extends Controller
                         'kabags'
                     )
                     ->count(),
+
+            'area_52' =>
+                Employee::query()
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->whereIn(
+                        'source_device_id',
+                        [
+                            1,
+                            2,
+                        ]
+                    )
+                    ->count(),
+
+            'area_27' =>
+                Employee::query()
+                    ->where(
+                        'is_active',
+                        true
+                    )
+                    ->where(
+                        'source_device_id',
+                        3
+                    )
+                    ->count(),
         ];
 
 
@@ -286,6 +375,7 @@ class KabagMappingController extends Controller
                 'categories',
                 'search',
                 'category',
+                'area',
                 'summary'
             )
         );

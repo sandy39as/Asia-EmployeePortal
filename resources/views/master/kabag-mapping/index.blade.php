@@ -47,7 +47,7 @@
 
 
         {{-- SUMMARY --}}
-        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-6">
 
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
@@ -73,6 +73,24 @@
                 </div>
                 <div class="mt-1 text-2xl font-black text-sky-800">
                     {{ $summary['mapped_to_selected'] ?? 0 }}
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 shadow-sm">
+                <div class="text-[11px] font-extrabold uppercase tracking-wider text-cyan-600">
+                    Area 52
+                </div>
+                <div class="mt-1 text-2xl font-black text-cyan-800">
+                    {{ $summary['area_52'] ?? 0 }}
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 shadow-sm">
+                <div class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600">
+                    Area 27
+                </div>
+                <div class="mt-1 text-2xl font-black text-indigo-800">
+                    {{ $summary['area_27'] ?? 0 }}
                 </div>
             </div>
 
@@ -143,6 +161,13 @@
                         Kabag yang sedang dipilih.
                     </div>
 
+                </div>
+
+                <div class="sm:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
+                    Mapping yang sudah dibuat sebelumnya <strong>tetap dipertahankan</strong>.
+                    Penambahan filter Area 52/27 tidak menghapus atau memindahkan mapping lama.
+                    Cek badge area pada card <strong>Sudah Masuk</strong>, lalu gunakan tombol
+                    <strong>Lepas</strong> hanya jika memang ada mapping lama yang salah area.
                 </div>
 
             </form>
@@ -217,6 +242,24 @@
                                             </span>
 
                                         @endif
+
+                                        @php
+                                            $areaLabel = match ((int) $employee->source_device_id) {
+                                                1, 2 => 'Area 52',
+                                                3 => 'Area 27',
+                                                default => 'Area Lain',
+                                            };
+
+                                            $areaBadgeClass = match ((int) $employee->source_device_id) {
+                                                1, 2 => 'border-cyan-200 bg-cyan-50 text-cyan-700',
+                                                3 => 'border-indigo-200 bg-indigo-50 text-indigo-700',
+                                                default => 'border-slate-200 bg-slate-50 text-slate-600',
+                                            };
+                                        @endphp
+
+                                        <span class="rounded-lg border px-2 py-0.5 text-[10px] font-extrabold {{ $areaBadgeClass }}">
+                                            {{ $areaLabel }}
+                                        </span>
 
                                     </div>
 
@@ -336,7 +379,7 @@
                             >
 
 
-                            <div class="sm:col-span-6">
+                            <div class="sm:col-span-3">
 
                                 <input
                                     type="text"
@@ -376,6 +419,32 @@
                             </div>
 
 
+                            <div class="sm:col-span-3">
+
+                                <select
+                                    name="area"
+                                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-amber-400 focus:outline-none"
+                                >
+                                    <option value="">
+                                        Semua Area
+                                    </option>
+
+                                    <option value="52" @selected(($area ?? '') === '52')>
+                                        Area 52
+                                    </option>
+
+                                    <option value="27" @selected(($area ?? '') === '27')>
+                                        Area 27
+                                    </option>
+
+                                    <option value="other" @selected(($area ?? '') === 'other')>
+                                        Area Lain
+                                    </option>
+                                </select>
+
+                            </div>
+
+
                             <div class="flex gap-2 sm:col-span-2">
 
                                 <button
@@ -389,6 +458,8 @@
                                     $search !== ''
                                     ||
                                     $category !== ''
+                                    ||
+                                    ($area ?? '') !== ''
                                 )
 
                                     <a
@@ -459,6 +530,24 @@
                                                 </span>
 
                                             @endif
+
+                                            @php
+                                                $areaLabel = match ((int) $employee->source_device_id) {
+                                                    1, 2 => 'Area 52',
+                                                    3 => 'Area 27',
+                                                    default => 'Area Lain',
+                                                };
+
+                                                $areaBadgeClass = match ((int) $employee->source_device_id) {
+                                                    1, 2 => 'border-cyan-200 bg-cyan-50 text-cyan-700',
+                                                    3 => 'border-indigo-200 bg-indigo-50 text-indigo-700',
+                                                    default => 'border-slate-200 bg-slate-50 text-slate-600',
+                                                };
+                                            @endphp
+
+                                            <span class="rounded-lg border px-2 py-0.5 text-[10px] font-extrabold {{ $areaBadgeClass }}">
+                                                {{ $areaLabel }}
+                                            </span>
 
                                         </div>
 
