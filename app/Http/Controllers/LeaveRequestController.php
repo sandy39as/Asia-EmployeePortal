@@ -40,43 +40,48 @@ class LeaveRequestController extends Controller
         );
 
         $items = LeaveRequest::query()
-            ->with([
-                'kabag',
-                'kabagApprovedBy',
-                'kabagRejectedBy',
-
-                'hrdApprovedBy',
-                'hrdRejectedBy',
-
-                'approvedBy',
-                'rejectedBy',
-
-                'specialLeaveType',
-                'permissionType',
-            ])
-            ->where(
-                'employee_id',
-                $employee->id
-            )
-            ->when(
-                $status !== '',
-                fn ($q) =>
-                    $q->where(
-                        'status',
-                        $status
+                    ->with([
+                        'kabag',
+                        'kabagApprovedBy',
+                        'kabagRejectedBy',
+                        'hrdApprovedBy',
+                        'hrdRejectedBy',
+                        'approvedBy',
+                        'rejectedBy',
+                        'specialLeaveType',
+                        'permissionType',
+                    ])
+                    ->where(
+                        'employee_id',
+                        $employee->id
                     )
-            )
-            ->when(
-                $jenis !== '',
-                fn ($q) =>
-                    $q->where(
-                        'jenis',
-                        $jenis
+                    ->when(
+                        $status !== '',
+                        fn ($q) =>
+                            $q->where(
+                                'status',
+                                $status
+                            )
                     )
-            )
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
+                    ->when(
+                        $jenis !== '',
+                        fn ($q) =>
+                            $q->where(
+                                'jenis',
+                                $jenis
+                            )
+                    )
+
+                    ->orderByRaw("
+                        CASE 
+                            WHEN status != 'cancelled' AND kabag_status = 'pending' THEN 0
+                            WHEN status != 'cancelled' AND kabag_status = 'approved' AND hrd_status = 'pending' THEN 1
+                            ELSE 2
+                        END ASC
+                    ")
+                    ->latest('created_at')
+                    ->paginate(10)
+                    ->withQueryString();
 
 
         /*
