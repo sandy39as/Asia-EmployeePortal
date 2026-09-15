@@ -71,277 +71,149 @@
         </header>
 
         {{-- SIDEBAR CONTAINER --}}
-        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-68 bg-[#f8fafc] border-r border-[#e2e8f0] transform -translate-x-full md:translate-x-0 md:static md:inset-auto md:flex md:flex-col transition-transform duration-200 ease-in-out shadow-sm md:shadow-none">
-            <div class="p-5 flex items-center justify-between border-b border-[#e2e8f0]">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-[#f8fafc] border-r border-[#e2e8f0] transform -translate-x-full md:translate-x-0 md:static md:inset-auto md:flex md:flex-col transition-transform duration-200 ease-in-out shadow-lg md:shadow-none">
+    
+            {{-- SIDEBAR HEADER --}}
+            <div class="h-16 px-5 flex items-center justify-between border-b border-[#e2e8f0] bg-white md:bg-transparent">
                 <div class="flex items-center gap-3">
-                    <div class="h-10 w-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-xs">
+                    <div class="h-9 w-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center p-1.5 shadow-xs shrink-0">
                         <img src="{{ asset('images/logo.png') }}" 
                              alt="Logo" 
                              class="h-full w-full object-contain"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
                         <span style="display:none" class="text-xs font-black text-white">AEP</span>
                     </div>
-
-                    <div>
-                        <div class="font-extrabold text-base text-slate-900 leading-tight">Asia Employee Portal</div>
-                        <div class="text-xs text-slate-500 font-bold mt-0.5">ASIA PLASTIK</div>
+                    <div class="min-w-0">
+                        <div class="font-extrabold text-sm text-slate-900 leading-tight truncate">Asia Employee Portal</div>
+                        <div class="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Asia Plastik</div>
                     </div>
                 </div>
-                <button id="closeSidebarBtn" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700">✕</button>
+                <button id="closeSidebarBtn" type="button" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
 
             {{-- NAVIGASI SIDEBAR --}}
-            <nav class="flex-1 px-3.5 py-5 space-y-1.5 overflow-y-auto">
-            @php
-                $user = auth()->user();
+            <nav class="flex-1 px-3.5 py-4 space-y-1 overflow-y-auto">
+                @php
+                    $user = auth()->user();
+                    $userRole = strtolower(trim((string) ($user?->role ?? '')));
+                    $userEmail = strtolower(trim((string) ($user?->email ?? '')));
 
-                $userRole = strtolower(
-                    trim((string) ($user?->role ?? ''))
-                );
+                    $isHrd = in_array($userRole, ['hrd', 'admin', 'superadmin'], true);
+                    $isKabag = $userRole === 'kabag';
+                    $isPortalMasterAdmin = $userEmail === 'sandyramdani65@gmail.com';
 
-                $userEmail = strtolower(
-                    trim((string) ($user?->email ?? ''))
-                );
+                    // Base class seragam untuk semua menu item
+                    $baseLinkClass = "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150";
+                    $activeLinkClass = "bg-white text-slate-900 shadow-xs border border-[#e2e8f0] font-bold";
+                    $inactiveLinkClass = "text-slate-600 hover:bg-slate-200/60 hover:text-slate-900";
+                @endphp
 
-                $isHrd = in_array(
-                    $userRole,
-                    [
-                        'hrd',
-                        'admin',
-                        'superadmin',
-                    ],
-                    true
-                );
-
-                $isKabag = $userRole === 'kabag';
-
-                $isPortalMasterAdmin =
-                    $userEmail === 'sandyramdani65@gmail.com';
-            @endphp
-
-            {{-- ========================================================= --}}
-            {{-- MENU KARYAWAN --}}
-            {{-- ========================================================= --}}
-            @if (!$isHrd && !$isKabag)
-
-                <a href="{{ route('leave-requests.index') }}" 
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                   {{ request()->routeIs('leave-requests.*')
-                        ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
-                        : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                   }}">
-
-                    <svg class="h-5 w-5 text-slate-500"
-                         fill="none"
-                         viewBox="0 0 24 24"
-                         stroke="currentColor">
-
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M9 12h6m-6 4h6m2.25 4.5H6.75A2.25 2.25 0 014.5 18.25V5.75A2.25 2.25 0 016.75 3.5h7.5L19.5 8.75v9.5a2.25 2.25 0 01-2.25 2.25z" />
-                    </svg>
-
-                    Pengajuan Saya
-                </a>
-
-
-            {{-- ========================================================= --}}
-            {{-- MENU HRD --}}
-            {{-- ========================================================= --}}
-            @elseif ($isHrd)
-
-                <a href="{{ route('hrd.leave-requests.index') }}" 
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                   {{ request()->routeIs('hrd.leave-requests.*')
-                        ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
-                        : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                   }}">
-
-                    <svg class="h-5 w-5 text-slate-500"
-                         fill="none"
-                         viewBox="0 0 24 24"
-                         stroke="currentColor">
-
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-
-                    Pengajuan Karyawan
-                </a>
-
-
-                <a href="{{ route('hrd.employees.index') }}" 
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                   {{ request()->routeIs('hrd.employees.*')
-                        ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
-                        : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                   }}">
-
-                    <svg class="h-5 w-5 text-slate-500"
-                         fill="none"
-                         viewBox="0 0 24 24"
-                         stroke="currentColor">
-
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-
-                    Data Karyawan
-                </a>
-
-
-                {{-- ===================================================== --}}
-                {{-- MASTER DATA KHUSUS SANDY --}}
-                {{-- ===================================================== --}}
-                @if ($isPortalMasterAdmin)
-
-                    <div class="pt-5 pb-1 px-4">
-                        <div class="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
-                            Master Data
-                        </div>
+                {{-- ========================================================= --}}
+                {{-- MENU KARYAWAN --}}
+                {{-- ========================================================= --}}
+                @if (!$isHrd && !$isKabag)
+                    <div class="px-3 pt-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Menu Utama
                     </div>
 
-
-                    {{-- DATA KABAG --}}
-                    <a
-                        href="{{ route('master.kabag.index') }}"
-                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                        {{ request()->routeIs('master.kabag.*')
-                            ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
-                            : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                        }}"
-                    >
-                        <svg
-                            class="h-5 w-5 text-slate-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0"
-                            />
+                    <a href="{{ route('leave-requests.index') }}" 
+                       class="{{ $baseLinkClass }} {{ request()->routeIs('leave-requests.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                        <svg class="h-5 w-5 {{ request()->routeIs('leave-requests.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2.25 4.5H6.75A2.25 2.25 0 014.5 18.25V5.75A2.25 2.25 0 016.75 3.5h7.5L19.5 8.75v9.5a2.25 2.25 0 01-2.25 2.25z" />
                         </svg>
-
-                        Data Kabag
+                        <span>Pengajuan Saya</span>
                     </a>
 
+                {{-- ========================================================= --}}
+                {{-- MENU HRD / ADMIN --}}
+                {{-- ========================================================= --}}
+                @elseif ($isHrd)
+                    <div class="px-3 pt-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Menu HRD
+                    </div>
 
-                    {{-- MASTER CUTI KHUSUS --}}
-                    <a
-                        href="{{ route('master.special-leave-types.index') }}"
-                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                        {{ request()->routeIs('master.special-leave-types.*')
-                            ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
-                            : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                        }}"
-                    >
-                        <svg
-                            class="h-5 w-5 text-slate-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M8.25 6.75V4.5m7.5 2.25V4.5M3.75 9.75h16.5m-15 10.5h13.5A1.5 1.5 0 0020.25 18.75V7.5A1.5 1.5 0 0018.75 6H5.25A1.5 1.5 0 003.75 7.5v11.25a1.5 1.5 0 001.5 1.5z"
-                            />
+                    <a href="{{ route('hrd.leave-requests.index') }}" 
+                       class="{{ $baseLinkClass }} {{ request()->routeIs('hrd.leave-requests.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                        <svg class="h-5 w-5 {{ request()->routeIs('hrd.leave-requests.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
-
-                        Cuti Khusus
+                        <span>Pengajuan Karyawan</span>
                     </a>
 
-                    <a
-                        href="{{ route('master.permission-types.index') }}"
-                        class="
-                            flex items-center gap-3 rounded-xl px-3 py-2.5
-                            text-sm font-bold transition
-                            {{ request()->routeIs('master.permission-types.*')
-                                ? 'bg-slate-900 text-white'
-                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                            }}
-                        "
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            stroke-width="2"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M9 12h6m-6 4h6M7 8h10M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"
-                            />
+                    <a href="{{ route('hrd.employees.index') }}" 
+                       class="{{ $baseLinkClass }} {{ request()->routeIs('hrd.employees.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                        <svg class="h-5 w-5 {{ request()->routeIs('hrd.employees.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-
-                        Jenis Izin
+                        <span>Data Karyawan</span>
                     </a>
 
-                    {{-- MASTER MAPPING KABAG --}}
-                    <a
-                        href="{{ route('master.kabag-mapping.index') }}"
-                        class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition
-                            {{
-                                request()->routeIs('master.kabag-mapping.*')
-                                    ? 'bg-blue-50 text-blue-700'
-                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                            }}"
-                    >
-                        <span>
-                            Mapping Kabag
-                        </span>
+                    {{-- MASTER DATA KHUSUS ADMIN UTAMA --}}
+                    @if ($isPortalMasterAdmin)
+                        <div class="pt-5 pb-1.5 px-3">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Master Data
+                            </div>
+                        </div>
+
+                        <a href="{{ route('master.kabag.index') }}"
+                           class="{{ $baseLinkClass }} {{ request()->routeIs('master.kabag.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                            <svg class="h-5 w-5 {{ request()->routeIs('master.kabag.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0" />
+                            </svg>
+                            <span>Data Kabag</span>
+                        </a>
+
+                        <a href="{{ route('master.kabag-mapping.index') }}"
+                           class="{{ $baseLinkClass }} {{ request()->routeIs('master.kabag-mapping.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                            <svg class="h-5 w-5 {{ request()->routeIs('master.kabag-mapping.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                            </svg>
+                            <span>Mapping Kabag</span>
+                        </a>
+
+                        <a href="{{ route('master.special-leave-types.index') }}"
+                           class="{{ $baseLinkClass }} {{ request()->routeIs('master.special-leave-types.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                            <svg class="h-5 w-5 {{ request()->routeIs('master.special-leave-types.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 6.75V4.5m7.5 2.25V4.5M3.75 9.75h16.5m-15 10.5h13.5A1.5 1.5 0 0020.25 18.75V7.5A1.5 1.5 0 0018.75 6H5.25A1.5 1.5 0 003.75 7.5v11.25a1.5 1.5 0 001.5 1.5z" />
+                            </svg>
+                            <span>Cuti Khusus</span>
+                        </a>
+
+                        <a href="{{ route('master.permission-types.index') }}"
+                           class="{{ $baseLinkClass }} {{ request()->routeIs('master.permission-types.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                            <svg class="h-5 w-5 {{ request()->routeIs('master.permission-types.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 8h10M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                            </svg>
+                            <span>Jenis Izin</span>
+                        </a>
+                    @endif
+
+                {{-- ========================================================= --}}
+                {{-- MENU KABAG --}}
+                {{-- ========================================================= --}}
+                @elseif ($isKabag)
+                    <div class="px-3 pt-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Persetujuan
+                    </div>
+
+                    <a href="{{ route('kabag.leave-requests.index') }}"
+                       class="{{ $baseLinkClass }} {{ request()->routeIs('kabag.leave-requests.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                        <svg class="h-5 w-5 {{ request()->routeIs('kabag.leave-requests.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <span>Persetujuan Pengajuan</span>
                     </a>
-
-
                 @endif
-
-
-            {{-- ========================================================= --}}
-            {{-- MENU KABAG --}}
-            {{-- ========================================================= --}}
-            @elseif ($isKabag)
-
-                <a href="{{ route('kabag.leave-requests.index') }}"
-                   class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition
-                   {{ request()->routeIs('kabag.leave-requests.*')
-                        ? 'bg-white text-slate-900 shadow-xs border border-[#e2e8f0]'
-                        : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                   }}">
-
-                    <svg class="h-5 w-5 text-slate-500"
-                         fill="none"
-                         viewBox="0 0 24 24"
-                         stroke="currentColor">
-
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                        />
-                    </svg>
-
-                    Persetujuan Pengajuan
-
-                </a>
-
-            @endif
             </nav>
 
-            <div class="p-4 border-t border-[#e2e8f0] text-xs text-slate-500 text-center font-semibold">
-                © {{ date('Y') }} ASIA PLASTIK
+            {{-- SIDEBAR FOOTER --}}
+            <div class="p-4 border-t border-[#e2e8f0] text-xs text-slate-400 text-center font-medium">
+                &copy; {{ date('Y') }} ASIA PLASTIK
             </div>
         </aside>
 
