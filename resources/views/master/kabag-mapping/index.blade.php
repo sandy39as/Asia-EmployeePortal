@@ -69,32 +69,93 @@
 
         {{-- PILIH KABAG --}}
         <div class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
-            <form method="GET" action="{{ route('master.kabag-mapping.index') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
+            <div class="grid grid-cols-1 items-center gap-4 sm:grid-cols-2">
+        
+                {{-- Custom Dropdown (Alpine.js) --}}
+                <div 
+                    x-data="{ 
+                        open: false,
+                        selectedId: '{{ $selectedKabag?->id ?? '' }}',
+                        selectKabag(id) {
+                            if (id !== this.selectedId) {
+                                window.location.href = '{{ route('master.kabag-mapping.index') }}?kabag_id=' + id;
+                            }
+                            this.open = false;
+                        }
+                    }" 
+                    class="relative"
+                    @click.outside="open = false"
+                >
                     <label class="mb-1.5 block text-xs font-extrabold uppercase tracking-wider text-slate-500">
                         Pilih Kabag
                     </label>
-                    <select
-                        name="kabag_id"
-                        onchange="this.form.submit()"
-                        class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-800 shadow-sm focus:border-blue-500 focus:outline-none"
+
+                    {{-- Tombol Pemicu Dropdown --}}
+                    <button
+                        type="button"
+                        @click="open = !open"
+                        class="flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-left text-sm font-bold text-slate-800 shadow-sm transition hover:border-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="truncate">{{ $selectedKabag?->name ?? 'Pilih salah satu kabag...' }}</span>
+                            @if($selectedKabag)
+                                <span class="shrink-0 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-extrabold text-blue-700">
+                                    {{ $selectedKabag->managed_employees_count }} karyawan
+                                </span>
+                            @endif
+                        </div>
+
+                        <svg 
+                            class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200" 
+                            :class="open ? 'rotate-180 text-blue-600' : ''"
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    {{-- Daftar Menu Dropdown --}}
+                    <div
+                        x-show="open"
+                        x-cloak
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="transform opacity-0 scale-95"
+                        x-transition:enter-end="transform opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-75"
+                        x-transition:leave-start="transform opacity-100 scale-100"
+                        x-transition:leave-end="transform opacity-0 scale-95"
+                        class="absolute left-0 top-full z-50 mt-1.5 max-h-72 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
                     >
                         @forelse ($kabags as $kabag)
-                            <option value="{{ $kabag->id }}" @selected($selectedKabag && $selectedKabag->id === $kabag->id)>
-                                {{ $kabag->name }} ({{ $kabag->managed_employees_count }} karyawan)
-                            </option>
+                            @php $isActive = $selectedKabag && $selectedKabag->id === $kabag->id; @endphp
+                            <button
+                                type="button"
+                                @click="selectKabag('{{ $kabag->id }}')"
+                                class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-bold transition {{ $isActive ? 'bg-blue-50 text-blue-800' : 'text-slate-700 hover:bg-slate-100' }}"
+                            >
+                                <span class="truncate">{{ $kabag->name }}</span>
+                                <span class="ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold {{ $isActive ? 'bg-blue-200 text-blue-900' : 'bg-slate-100 text-slate-600' }}">
+                                    {{ $kabag->managed_employees_count }} karyawan
+                                </span>
+                            </button>
                         @empty
-                            <option value="">Belum ada user role Kabag</option>
+                            <div class="px-3 py-3 text-center text-xs text-slate-400">
+                                Belum ada user role Kabag
+                            </div>
                         @endforelse
-                    </select>
+                    </div>
                 </div>
 
+                {{-- Info Panel Kanan --}}
                 <div class="flex items-center rounded-xl border border-blue-100 bg-blue-50/60 p-3.5">
                     <p class="text-xs leading-relaxed text-blue-800">
                         Karyawan dapat dimasukkan ke beberapa Kabag sekaligus. Perubahan mapping pada halaman ini hanya berlaku untuk Kabag yang sedang aktif dipilih.
                     </p>
                 </div>
-            </form>
+
+            </div>
         </div>
 
         @if ($selectedKabag)
