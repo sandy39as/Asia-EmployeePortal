@@ -113,6 +113,24 @@
                                     {{ $item->jenis_label }}
                                 </span>
 
+                                @if ($item->jenis === 'izin' && $item->permissionType)
+                                    <span class="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[10px] font-extrabold text-sky-700">
+                                        {{ $item->permissionType->name }}
+                                    </span>
+                                @endif
+
+                                @if ($item->jenis === 'cuti')
+                                    <span class="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[10px] font-extrabold text-violet-700">
+                                        @if ($item->leave_category === 'annual')
+                                            Cuti Tahunan
+                                        @elseif ($item->leave_category === 'special')
+                                            {{ $item->specialLeaveType?->name ?? 'Cuti Khusus' }}
+                                        @else
+                                            Cuti
+                                        @endif
+                                    </span>
+                                @endif
+
                             </div>
 
 
@@ -765,6 +783,47 @@
                             </span>
 
                         </div>
+
+
+                        @if ($item->jenis === 'izin')
+                            <div class="p-3.5 rounded-xl bg-sky-50 border border-sky-200">
+
+                                <span class="text-[11px] text-sky-600 font-bold uppercase block">
+                                    Jenis Izin
+                                </span>
+
+                                <span class="text-sky-900 font-extrabold text-sm mt-1 block">
+                                    {{ $item->permissionType?->name ?? 'Izin' }}
+                                </span>
+
+                                @if ($item->permissionType?->code)
+                                    <span class="mt-1 block text-[11px] font-bold text-sky-600">
+                                        {{ $item->permissionType->code }}
+                                    </span>
+                                @endif
+
+                            </div>
+                        @endif
+
+                        @if ($item->jenis === 'cuti')
+                            <div class="p-3.5 rounded-xl bg-violet-50 border border-violet-200">
+
+                                <span class="text-[11px] text-violet-600 font-bold uppercase block">
+                                    Jenis Cuti
+                                </span>
+
+                                <span class="text-violet-900 font-extrabold text-sm mt-1 block">
+                                    @if ($item->leave_category === 'annual')
+                                        Cuti Tahunan
+                                    @elseif ($item->leave_category === 'special')
+                                        {{ $item->specialLeaveType?->name ?? 'Cuti Khusus' }}
+                                    @else
+                                        Cuti
+                                    @endif
+                                </span>
+
+                            </div>
+                        @endif
 
 
                         <div class="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
