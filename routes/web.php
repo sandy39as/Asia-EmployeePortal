@@ -475,6 +475,16 @@ Route::middleware([
                 ]
             )->name('employee-credentials.export');
 
+            Route::post(
+                '/employee-credentials/mass-reset-batch',
+                [
+                    EmployeeCredentialController::class,
+                    'batchReset',
+                ]
+            )->name(
+                'employee-credentials.mass-reset-batch'
+            );
+
 
             /*
             |--------------------------------------------------------------------------

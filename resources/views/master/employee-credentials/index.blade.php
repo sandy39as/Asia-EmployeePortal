@@ -19,6 +19,12 @@
             </div>
         @endif
 
+        @if (session('warning'))
+            <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                {{ session('warning') }}
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
                 <div class="font-extrabold">Proses belum dapat dijalankan.</div>
@@ -748,6 +754,127 @@
         </div>
     </div>
 
+    {{-- ========================================================= --}}
+    {{-- AJAX BATCH RESET PROGRESS --}}
+    {{-- ========================================================= --}}
+    <div
+        id="batchResetProgressModal"
+        class="fixed inset-0 z-[170] hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+    >
+        <div class="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
+
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-extrabold text-slate-900">
+                        Memproses Reset Akun
+                    </h3>
+
+                    <p
+                        id="batchResetProgressText"
+                        class="mt-1 text-sm font-semibold text-slate-500"
+                    >
+                        Menyiapkan proses...
+                    </p>
+                </div>
+
+                <div
+                    id="batchResetProgressPercent"
+                    class="rounded-xl bg-slate-100 px-3 py-2 text-sm font-black text-slate-800"
+                >
+                    0%
+                </div>
+            </div>
+
+
+            <div class="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
+                <div
+                    id="batchResetProgressBar"
+                    class="h-full w-0 rounded-full bg-blue-600 transition-all duration-300"
+                ></div>
+            </div>
+
+
+            <div class="mt-5 grid grid-cols-3 gap-3">
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Diproses
+                    </div>
+                    <div
+                        id="batchProcessedCount"
+                        class="mt-1 text-xl font-black text-slate-900"
+                    >
+                        0
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-center">
+                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600">
+                        Berhasil
+                    </div>
+                    <div
+                        id="batchSuccessCount"
+                        class="mt-1 text-xl font-black text-emerald-800"
+                    >
+                        0
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-center">
+                    <div class="text-[10px] font-extrabold uppercase tracking-wider text-rose-600">
+                        Gagal
+                    </div>
+                    <div
+                        id="batchFailedCount"
+                        class="mt-1 text-xl font-black text-rose-800"
+                    >
+                        0
+                    </div>
+                </div>
+
+            </div>
+
+
+            <div
+                id="batchFailedListBox"
+                class="mt-4 hidden max-h-44 overflow-y-auto rounded-2xl border border-rose-200 bg-rose-50 p-3"
+            >
+                <div class="mb-2 text-xs font-extrabold uppercase tracking-wider text-rose-700">
+                    Akun Gagal / Terkunci
+                </div>
+
+                <div
+                    id="batchFailedList"
+                    class="space-y-1 text-xs font-semibold text-rose-800"
+                ></div>
+            </div>
+
+
+            <div
+                id="batchResetDoneActions"
+                class="mt-5 hidden justify-end gap-2"
+            >
+                <button
+                    type="button"
+                    id="batchResetCloseButton"
+                    class="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-extrabold text-slate-700 hover:bg-slate-50"
+                >
+                    Tutup
+                </button>
+
+                <button
+                    type="button"
+                    id="batchResetReloadButton"
+                    class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-extrabold text-white hover:bg-black"
+                >
+                    Refresh Data
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const modal = document.getElementById('massResetModal');
@@ -787,15 +914,6 @@
                     closeModal();
                 }
             });
-
-            form?.addEventListener('submit', function () {
-                if (!confirmButton) return;
-
-                confirmButton.disabled = true;
-                confirmButton.textContent = 'Memproses...';
-                confirmButton.classList.add('opacity-70', 'cursor-not-allowed');
-            });
-
 
             /*
             |--------------------------------------------------------------------------
@@ -1057,24 +1175,666 @@
                 );
 
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | AJAX BATCH RESET - ANTI 504
+            |--------------------------------------------------------------------------
+            */
+
+            const batchResetUrl =
+                @json(
+                    route(
+                        'master.employee-credentials.mass-reset-batch'
+                    )
+                );
+
+            const batchSize =
+                10;
+
+            const batchProgressModal =
+                document.getElementById(
+                    'batchResetProgressModal'
+                );
+
+            const batchProgressText =
+                document.getElementById(
+                    'batchResetProgressText'
+                );
+
+            const batchProgressPercent =
+                document.getElementById(
+                    'batchResetProgressPercent'
+                );
+
+            const batchProgressBar =
+                document.getElementById(
+                    'batchResetProgressBar'
+                );
+
+            const batchProcessedCount =
+                document.getElementById(
+                    'batchProcessedCount'
+                );
+
+            const batchSuccessCount =
+                document.getElementById(
+                    'batchSuccessCount'
+                );
+
+            const batchFailedCount =
+                document.getElementById(
+                    'batchFailedCount'
+                );
+
+            const batchFailedListBox =
+                document.getElementById(
+                    'batchFailedListBox'
+                );
+
+            const batchFailedList =
+                document.getElementById(
+                    'batchFailedList'
+                );
+
+            const batchDoneActions =
+                document.getElementById(
+                    'batchResetDoneActions'
+                );
+
+            const batchCloseButton =
+                document.getElementById(
+                    'batchResetCloseButton'
+                );
+
+            const batchReloadButton =
+                document.getElementById(
+                    'batchResetReloadButton'
+                );
+
+
+            let batchIsRunning =
+                false;
+
+
+            function chunkIds(
+                ids,
+                size
+            ) {
+                const chunks =
+                    [];
+
+                for (
+                    let i = 0;
+                    i < ids.length;
+                    i += size
+                ) {
+                    chunks.push(
+                        ids.slice(
+                            i,
+                            i + size
+                        )
+                    );
+                }
+
+                return chunks;
+            }
+
+
+            function showBatchProgress() {
+
+                batchProgressModal
+                    ?.classList
+                    .remove(
+                        'hidden'
+                    );
+
+                batchProgressModal
+                    ?.classList
+                    .add(
+                        'flex'
+                    );
+
+                document
+                    .body
+                    .classList
+                    .add(
+                        'overflow-hidden'
+                    );
+            }
+
+
+            function hideBatchProgress() {
+
+                if (
+                    batchIsRunning
+                ) {
+                    return;
+                }
+
+                batchProgressModal
+                    ?.classList
+                    .remove(
+                        'flex'
+                    );
+
+                batchProgressModal
+                    ?.classList
+                    .add(
+                        'hidden'
+                    );
+
+                document
+                    .body
+                    .classList
+                    .remove(
+                        'overflow-hidden'
+                    );
+            }
+
+
+            function resetBatchProgressUi(
+                total
+            ) {
+                if (
+                    batchProgressText
+                ) {
+                    batchProgressText.textContent =
+                        '0 dari '
+                        + total
+                        + ' akun diproses...';
+                }
+
+                if (
+                    batchProgressPercent
+                ) {
+                    batchProgressPercent.textContent =
+                        '0%';
+                }
+
+                if (
+                    batchProgressBar
+                ) {
+                    batchProgressBar.style.width =
+                        '0%';
+                }
+
+                if (
+                    batchProcessedCount
+                ) {
+                    batchProcessedCount.textContent =
+                        '0';
+                }
+
+                if (
+                    batchSuccessCount
+                ) {
+                    batchSuccessCount.textContent =
+                        '0';
+                }
+
+                if (
+                    batchFailedCount
+                ) {
+                    batchFailedCount.textContent =
+                        '0';
+                }
+
+                if (
+                    batchFailedList
+                ) {
+                    batchFailedList.innerHTML =
+                        '';
+                }
+
+                batchFailedListBox
+                    ?.classList
+                    .add(
+                        'hidden'
+                    );
+
+                batchDoneActions
+                    ?.classList
+                    .remove(
+                        'flex'
+                    );
+
+                batchDoneActions
+                    ?.classList
+                    .add(
+                        'hidden'
+                    );
+            }
+
+
+            function updateBatchProgressUi(
+                processed,
+                total,
+                successCount,
+                failedCount
+            ) {
+                const percent =
+                    total > 0
+                        ? Math.round(
+                            (
+                                processed
+                                /
+                                total
+                            )
+                            *
+                            100
+                        )
+                        : 100;
+
+                if (
+                    batchProgressText
+                ) {
+                    batchProgressText.textContent =
+                        processed
+                        + ' dari '
+                        + total
+                        + ' akun selesai diproses.';
+                }
+
+                if (
+                    batchProgressPercent
+                ) {
+                    batchProgressPercent.textContent =
+                        percent
+                        + '%';
+                }
+
+                if (
+                    batchProgressBar
+                ) {
+                    batchProgressBar.style.width =
+                        percent
+                        + '%';
+                }
+
+                if (
+                    batchProcessedCount
+                ) {
+                    batchProcessedCount.textContent =
+                        processed;
+                }
+
+                if (
+                    batchSuccessCount
+                ) {
+                    batchSuccessCount.textContent =
+                        successCount;
+                }
+
+                if (
+                    batchFailedCount
+                ) {
+                    batchFailedCount.textContent =
+                        failedCount;
+                }
+            }
+
+
+            function appendBatchFailures(
+                failures
+            ) {
+                if (
+                    ! Array.isArray(
+                        failures
+                    )
+                    ||
+                    failures.length
+                    === 0
+                ) {
+                    return;
+                }
+
+                batchFailedListBox
+                    ?.classList
+                    .remove(
+                        'hidden'
+                    );
+
+                failures.forEach(
+                    function (
+                        failure
+                    ) {
+                        const row =
+                            document.createElement(
+                                'div'
+                            );
+
+                        row.textContent =
+                            (
+                                failure.nama
+                                ?? 'Karyawan'
+                            )
+                            +
+                            ' ('
+                            +
+                            (
+                                failure.employee_code
+                                ?? '-'
+                            )
+                            +
+                            ') - '
+                            +
+                            (
+                                failure.message
+                                ?? 'Gagal'
+                            );
+
+                        batchFailedList
+                            ?.appendChild(
+                                row
+                            );
+                    }
+                );
+            }
+
+
+            async function runBatchReset(
+                employeeIds,
+                resetMode
+            ) {
+                if (
+                    batchIsRunning
+                    ||
+                    employeeIds.length
+                    === 0
+                ) {
+                    return;
+                }
+
+                batchIsRunning =
+                    true;
+
+                const chunks =
+                    chunkIds(
+                        employeeIds,
+                        batchSize
+                    );
+
+                const total =
+                    employeeIds.length;
+
+                let processed =
+                    0;
+
+                let successCount =
+                    0;
+
+                let failedCount =
+                    0;
+
+                resetBatchProgressUi(
+                    total
+                );
+
+                showBatchProgress();
+
+
+                for (
+                    let index = 0;
+                    index < chunks.length;
+                    index++
+                ) {
+                    const ids =
+                        chunks[
+                            index
+                        ];
+
+                    if (
+                        batchProgressText
+                    ) {
+                        batchProgressText.textContent =
+                            'Batch '
+                            +
+                            (
+                                index
+                                +
+                                1
+                            )
+                            +
+                            ' dari '
+                            +
+                            chunks.length
+                            +
+                            ' sedang diproses...';
+                    }
+
+                    try {
+                        const response =
+                            await fetch(
+                                batchResetUrl,
+                                {
+                                    method:
+                                        'POST',
+
+                                    headers: {
+                                        'Content-Type':
+                                            'application/json',
+
+                                        'Accept':
+                                            'application/json',
+
+                                        'X-CSRF-TOKEN':
+                                            @json(
+                                                csrf_token()
+                                            ),
+
+                                        'X-Requested-With':
+                                            'XMLHttpRequest',
+                                    },
+
+                                    body:
+                                        JSON.stringify({
+                                            employee_ids:
+                                                ids,
+
+                                            reset_mode:
+                                                resetMode,
+                                        }),
+                                }
+                            );
+
+                        const data =
+                            await response.json();
+
+
+                        if (
+                            ! response.ok
+                        ) {
+                            throw new Error(
+                                data?.message
+                                ??
+                                'Batch gagal diproses.'
+                            );
+                        }
+
+
+                        successCount +=
+                            Number(
+                                data.success_count
+                                ??
+                                0
+                            );
+
+                        failedCount +=
+                            Number(
+                                data.failed_count
+                                ??
+                                0
+                            );
+
+                        processed +=
+                            Number(
+                                data.processed
+                                ??
+                                ids.length
+                            );
+
+                        appendBatchFailures(
+                            data.failed
+                            ??
+                            []
+                        );
+
+                    }
+                    catch (
+                        error
+                    ) {
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Jika satu REQUEST batch gagal total, hanya 10 akun batch itu
+                        | yang dianggap gagal. Batch berikutnya tetap dilanjutkan.
+                        |--------------------------------------------------------------------------
+                        */
+
+                        processed +=
+                            ids.length;
+
+                        failedCount +=
+                            ids.length;
+
+                        appendBatchFailures(
+                            ids.map(
+                                function (
+                                    employeeId
+                                ) {
+                                    const checkbox =
+                                        document.querySelector(
+                                            '.employeeResetCheckbox[value="'
+                                            +
+                                            employeeId
+                                            +
+                                            '"]'
+                                        );
+
+                                    const row =
+                                        checkbox
+                                            ?.closest(
+                                                '.employeeResetRow'
+                                            );
+
+                                    const name =
+                                        row
+                                            ?.querySelector(
+                                                'td:nth-child(2) .font-extrabold'
+                                            )
+                                            ?.textContent
+                                            ?.trim()
+                                        ??
+                                        'Karyawan';
+
+                                    return {
+                                        nama:
+                                            name,
+
+                                        employee_code:
+                                            '#'
+                                            +
+                                            employeeId,
+
+                                        message:
+                                            error.message
+                                            ??
+                                            'Request batch gagal.',
+                                    };
+                                }
+                            )
+                        );
+                    }
+
+
+                    updateBatchProgressUi(
+                        processed,
+                        total,
+                        successCount,
+                        failedCount
+                    );
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | JEDA KECIL AGAR SERVER TIDAK DITEMBAK TERUS-MENERUS
+                    |--------------------------------------------------------------------------
+                    */
+                    await new Promise(
+                        resolve =>
+                            setTimeout(
+                                resolve,
+                                150
+                            )
+                    );
+                }
+
+
+                batchIsRunning =
+                    false;
+
+
+                if (
+                    batchProgressText
+                ) {
+                    batchProgressText.textContent =
+                        failedCount > 0
+                            ? 'Selesai. '
+                                +
+                                successCount
+                                +
+                                ' berhasil, '
+                                +
+                                failedCount
+                                +
+                                ' gagal.'
+                            : 'Selesai. Semua '
+                                +
+                                successCount
+                                +
+                                ' akun berhasil direset.';
+                }
+
+
+                batchDoneActions
+                    ?.classList
+                    .remove(
+                        'hidden'
+                    );
+
+                batchDoneActions
+                    ?.classList
+                    .add(
+                        'flex'
+                    );
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | RESET KARYAWAN TERPILIH
+            |--------------------------------------------------------------------------
+            */
+
             selectedEmployeeResetForm
                 ?.addEventListener(
                     'submit',
-                    function (event) {
+                    async function (
+                        event
+                    ) {
+                        event.preventDefault();
 
-                        const selectedCount =
+                        const selected =
                             employeeResetCheckboxes
                                 .filter(
                                     checkbox =>
                                         checkbox.checked
-                                )
-                                .length;
+                                );
 
-
-                        if (selectedCount === 0) {
-
-                            event.preventDefault();
-
+                        if (
+                            selected.length
+                            === 0
+                        ) {
                             alert(
                                 'Pilih minimal satu karyawan.'
                             );
@@ -1083,30 +1843,157 @@
                         }
 
 
+                        const resetMode =
+                            selectedEmployeeResetForm
+                                .querySelector(
+                                    'input[name="reset_mode"]:checked'
+                                )
+                                ?.value
+                            ??
+                            'password_only';
+
+
                         const confirmed =
                             confirm(
-                                'Reset password '
-                                + selectedCount
-                                + ' karyawan terpilih?'
+                                'Reset '
+                                +
+                                selected.length
+                                +
+                                ' karyawan terpilih?'
                             );
 
 
-                        if (! confirmed) {
-
-                            event.preventDefault();
-
+                        if (
+                            ! confirmed
+                        ) {
                             return;
                         }
 
 
-                        if (resetSelectedEmployeesButton) {
+                        await runBatchReset(
+                            selected.map(
+                                checkbox =>
+                                    Number(
+                                        checkbox.value
+                                    )
+                            ),
+                            resetMode
+                        );
+                    }
+                );
 
-                            resetSelectedEmployeesButton.disabled =
-                                true;
 
-                            resetSelectedEmployeesButton.textContent =
-                                'Memproses...';
-                        }
+            /*
+            |--------------------------------------------------------------------------
+            | RESET MASSAL SESUAI FILTER SERVER
+            |--------------------------------------------------------------------------
+            */
+
+            form?.addEventListener(
+                'submit',
+                async function (
+                    event
+                ) {
+                    event.preventDefault();
+
+
+                    const allowAll =
+                        form.querySelector(
+                            'input[name="allow_all"]'
+                        );
+
+                    if (
+                        allowAll
+                        &&
+                        ! allowAll.checked
+                    ) {
+                        alert(
+                            'Centang konfirmasi reset seluruh akun terlebih dahulu.'
+                        );
+
+                        return;
+                    }
+
+
+                    const resetMode =
+                        form.querySelector(
+                            'input[name="reset_mode"]:checked'
+                        )
+                        ?.value
+                    ??
+                    'password_only';
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Semua checkbox yang ada di halaman adalah hasil filter
+                    | server Area/Bagian saat ini. Live search tidak mengubah
+                    | target mass reset.
+                    |--------------------------------------------------------------------------
+                    */
+
+                    const ids =
+                        employeeResetCheckboxes
+                            .map(
+                                checkbox =>
+                                    Number(
+                                        checkbox.value
+                                    )
+                            );
+
+
+                    if (
+                        ids.length
+                        === 0
+                    ) {
+                        alert(
+                            'Tidak ada akun pada hasil filter.'
+                        );
+
+                        return;
+                    }
+
+
+                    const confirmed =
+                        confirm(
+                            'Reset massal '
+                            +
+                            ids.length
+                            +
+                            ' akun? Proses akan dibagi menjadi batch kecil.'
+                        );
+
+
+                    if (
+                        ! confirmed
+                    ) {
+                        return;
+                    }
+
+
+                    closeModal();
+
+
+                    await runBatchReset(
+                        ids,
+                        resetMode
+                    );
+                }
+            );
+
+
+            batchCloseButton
+                ?.addEventListener(
+                    'click',
+                    hideBatchProgress
+                );
+
+
+            batchReloadButton
+                ?.addEventListener(
+                    'click',
+                    function () {
+                        window.location.reload();
                     }
                 );
 

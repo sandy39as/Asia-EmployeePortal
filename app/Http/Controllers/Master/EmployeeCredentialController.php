@@ -329,6 +329,200 @@ class EmployeeCredentialController extends Controller
     }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | AJAX BATCH RESET
+    |--------------------------------------------------------------------------
+    |
+    | Maksimal 10 akun per HTTP request agar tidak terkena Nginx 504.
+    | Frontend akan membagi ratusan akun menjadi beberapa request kecil
+    | dan menampilkan progress secara langsung.
+    |
+    */
+
+    public function batchReset(
+        Request $request
+    ): \Illuminate\Http\JsonResponse {
+        $this->authorizeMaster(
+            $request
+        );
+
+        @set_time_limit(60);
+
+        $validated =
+            $request->validate([
+                'reset_mode' => [
+                    'required',
+                    Rule::in([
+                        'password_only',
+                        'login_and_password',
+                    ]),
+                ],
+
+                'employee_ids' => [
+                    'required',
+                    'array',
+                    'min:1',
+                    'max:10',
+                ],
+
+                'employee_ids.*' => [
+                    'integer',
+                    Rule::exists(
+                        'employees',
+                        'id'
+                    )->where(
+                        fn ($query) =>
+                            $query->where(
+                                'is_active',
+                                true
+                            )
+                    ),
+                ],
+            ]);
+
+        $resetMode =
+            $validated[
+                'reset_mode'
+            ];
+
+        $employeeIds =
+            collect(
+                $validated[
+                    'employee_ids'
+                ]
+            )
+                ->map(
+                    fn ($id) =>
+                        (int) $id
+                )
+                ->unique()
+                ->values();
+
+        $employees =
+            Employee::query()
+                ->with(
+                    'user'
+                )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->whereIn(
+                    'id',
+                    $employeeIds
+                )
+                ->get()
+                ->keyBy(
+                    'id'
+                );
+
+        $successCount =
+            0;
+
+        $failedCount =
+            0;
+
+        $failed =
+            [];
+
+        $createdBy =
+            $request
+                ->user()
+                ->id;
+
+        foreach (
+            $employeeIds
+            as $employeeId
+        ) {
+            $employee =
+                $employees->get(
+                    $employeeId
+                );
+
+            if (
+                ! $employee
+                ||
+                ! $employee->user
+            ) {
+                $failedCount++;
+
+                $failed[] = [
+                    'employee_id' =>
+                        $employeeId,
+
+                    'nama' =>
+                        $employee?->nama
+                        ?? 'Tidak ditemukan',
+
+                    'employee_code' =>
+                        $employee?->employee_code
+                        ?? '-',
+
+                    'message' =>
+                        'Akun login tidak tersedia.',
+                ];
+
+                continue;
+            }
+
+            try {
+                $this->resetCredentialForEmployee(
+                    $employee,
+                    $employee->user,
+                    $resetMode,
+                    $createdBy
+                );
+
+                $successCount++;
+            } catch (
+                Throwable $e
+            ) {
+                report(
+                    $e
+                );
+
+                $failedCount++;
+
+                $failed[] = [
+                    'employee_id' =>
+                        $employee->id,
+
+                    'nama' =>
+                        $employee->nama,
+
+                    'employee_code' =>
+                        $employee->employee_code,
+
+                    'message' =>
+                        $this->safeBatchErrorMessage(
+                            $e
+                        ),
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' =>
+                true,
+
+            'processed' =>
+                $successCount
+                +
+                $failedCount,
+
+            'success_count' =>
+                $successCount,
+
+            'failed_count' =>
+                $failedCount,
+
+            'failed' =>
+                $failed,
+        ]);
+    }
+
+
     public function resetOne(
         Request $request,
         Employee $employee
@@ -802,6 +996,49 @@ class EmployeeCredentialController extends Controller
             }
         );
     }
+
+    private function safeBatchErrorMessage(
+        Throwable $e
+    ): string {
+        if (
+            $e
+            instanceof
+            QueryException
+        ) {
+            $mysqlError =
+                (int) (
+                    $e->errorInfo[1]
+                    ?? 0
+                );
+
+            if (
+                in_array(
+                    $mysqlError,
+                    [
+                        1205,
+                        1213,
+                    ],
+                    true
+                )
+            ) {
+                return
+                    'Akun sedang terkunci oleh proses lain.';
+            }
+
+            if (
+                $mysqlError
+                ===
+                1062
+            ) {
+                return
+                    'ID Login bentrok dengan akun lain.';
+            }
+        }
+
+        return
+            'Reset akun gagal.';
+    }
+
 
     private function authorizeMaster(
         Request $request
