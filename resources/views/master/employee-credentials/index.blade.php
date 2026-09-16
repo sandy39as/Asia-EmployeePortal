@@ -87,57 +87,69 @@
         </div>
 
         {{-- ========================================================= --}}
-        {{-- 2 CARD: FILTER + PILIH KARYAWAN --}}
+        {{-- SINGLE CARD: FILTER + PILIH + RESET --}}
         {{-- ========================================================= --}}
-        <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
 
-            {{-- FILTER CARD --}}
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-
-                <div class="mb-4">
-                    <div class="text-sm font-extrabold text-slate-900">
-                        Filter Karyawan
+            <div class="border-b border-slate-200 px-5 py-4 sm:px-6">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <div class="text-sm font-extrabold text-slate-900">
+                            Pilih & Reset Karyawan
+                        </div>
+                        <div class="mt-0.5 text-xs leading-5 text-slate-500">
+                            Cari, filter, pilih karyawan, lalu reset password atau ID Login + password dari satu tempat.
+                        </div>
                     </div>
 
-                    <div class="mt-0.5 text-xs text-slate-500">
-                        Filter area dan bagian. Pencarian nama/ID/jabatan berjalan live tanpa reload.
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-500">
+                            Tampil:
+                            <span id="liveEmployeeVisibleCount" class="font-black text-slate-900">
+                                {{ $employees->count() }}
+                            </span>
+                        </div>
+
+                        <div class="rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700">
+                            Dipilih:
+                            <span id="selectedEmployeeResetCount" class="font-black">0</span>
+                        </div>
                     </div>
                 </div>
+            </div>
 
+            <div class="border-b border-slate-200 bg-slate-50/70 px-5 py-4 sm:px-6">
+                <div class="grid grid-cols-1 gap-3 lg:grid-cols-12">
 
-                <div class="space-y-3">
-
-                    <div>
-                        <label class="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                    <div class="lg:col-span-5">
+                        <label for="liveEmployeeSearch" class="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
                             Live Search
                         </label>
 
                         <input
                             type="text"
                             id="liveEmployeeSearch"
-                            placeholder="Ketik nama / ID / jabatan..."
-                            class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm"
+                            placeholder="Cari nama / ID / login / jabatan..."
+                            class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-slate-500 focus:outline-none"
                             autocomplete="off"
                         >
                     </div>
-
 
                     <form
                         method="GET"
                         action="{{ route('master.employee-credentials.index') }}"
                         id="credentialFilterForm"
-                        class="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                        class="contents"
                     >
-
-                        <div>
-                            <label class="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                        <div class="lg:col-span-2">
+                            <label class="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
                                 Area
                             </label>
 
                             <select
                                 name="area"
                                 onchange="this.form.submit()"
-                                class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm"
+                                class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-slate-500 focus:outline-none"
                             >
                                 <option value="">Semua Area</option>
                                 <option value="52" @selected(($filters['area'] ?? '') === '52')>Area 52</option>
@@ -146,16 +158,15 @@
                             </select>
                         </div>
 
-
-                        <div>
-                            <label class="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                        <div class="lg:col-span-3">
+                            <label class="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
                                 Bagian
                             </label>
 
                             <select
                                 name="category"
                                 onchange="this.form.submit()"
-                                class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm"
+                                class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm focus:border-slate-500 focus:outline-none"
                             >
                                 <option value="">Semua Bagian</option>
 
@@ -170,279 +181,179 @@
                             </select>
                         </div>
 
-
-                        <div class="sm:col-span-2 flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-
-                            <div class="text-xs text-slate-500">
-                                Tampil:
-                                <span id="liveEmployeeVisibleCount" class="font-black text-slate-900">
-                                    {{ $employees->count() }}
-                                </span>
-                                karyawan
-                            </div>
-
-
+                        <div class="flex items-end lg:col-span-2">
                             <a
                                 href="{{ route('master.employee-credentials.index') }}"
-                                class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-extrabold text-slate-600 hover:bg-slate-100"
+                                class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-extrabold text-slate-600 transition hover:bg-slate-100"
                             >
                                 Reset Filter
                             </a>
-
                         </div>
-
                     </form>
-
                 </div>
-
             </div>
 
-
-            {{-- CHECKBOX CARD --}}
-            <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-
-                <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-
-                    <div>
-                        <div class="text-sm font-extrabold text-slate-900">
-                            Pilih Karyawan
-                        </div>
-
-                        <div class="mt-0.5 text-xs text-slate-500">
-                            Centang karyawan yang ingin direset.
-                        </div>
-                    </div>
-
-
-                    <div class="flex flex-wrap items-center gap-2">
-
-                        <button
-                            type="button"
-                            id="toggleAllEmployees"
-                            class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-50"
-                        >
-                            Pilih Semua Tampil
-                        </button>
-
-                        <div class="text-xs font-bold text-slate-500">
-                            Dipilih:
-                            <span
-                                id="selectedEmployeeResetCount"
-                                class="font-black text-slate-900"
-                            >
-                                0
-                            </span>
-                        </div>
-
-                    </div>
-
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <div class="text-xs font-semibold text-slate-500">
+                    Centang karyawan yang ingin direset. Live search hanya menyaring tampilan.
                 </div>
 
-
-                <form
-                    method="POST"
-                    action="{{ route('master.employee-credentials.mass-reset') }}"
-                    id="selectedEmployeeResetForm"
+                <button
+                    type="button"
+                    id="toggleAllEmployees"
+                    class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-extrabold text-slate-700 transition hover:bg-slate-50"
                 >
-                    @csrf
+                    Pilih Semua Tampil
+                </button>
+            </div>
 
-                    <input type="hidden" name="area" value="{{ $filters['area'] ?? '' }}">
-                    <input type="hidden" name="category" value="{{ $filters['category'] ?? '' }}">
+            <form
+                method="POST"
+                action="{{ route('master.employee-credentials.mass-reset') }}"
+                id="selectedEmployeeResetForm"
+            >
+                @csrf
 
+                <input type="hidden" name="area" value="{{ $filters['area'] ?? '' }}">
+                <input type="hidden" name="category" value="{{ $filters['category'] ?? '' }}">
 
-                    <div class="max-h-[560px] overflow-y-auto">
+                <div class="max-h-[560px] overflow-auto">
+                    <table class="min-w-full">
 
-                        <table class="min-w-full">
+                        <thead class="sticky top-0 z-10 bg-slate-50 shadow-sm">
+                            <tr class="text-left text-xs uppercase tracking-wider text-slate-500">
+                                <th class="w-12 px-5 py-4">
+                                    <input
+                                        type="checkbox"
+                                        id="employeeResetHeaderCheckbox"
+                                        class="h-4.5 w-4.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                    >
+                                </th>
 
-                            <thead class="sticky top-0 z-10 bg-slate-50 shadow-sm">
+                                <th class="px-5 py-4 font-extrabold">Karyawan</th>
+                                <th class="px-5 py-4 font-extrabold">Area</th>
+                                <th class="px-5 py-4 font-extrabold">Bagian</th>
+                                <th class="px-5 py-4 font-extrabold">Status</th>
+                            </tr>
+                        </thead>
 
-                                <tr class="text-left text-xs uppercase tracking-wider text-slate-500">
+                        <tbody id="employeeResetTableBody" class="divide-y divide-slate-100">
+                            @forelse ($employees as $employee)
+                                @php
+                                    $employeeUser = $employee->user;
 
-                                    <th class="w-12 px-5 py-4">
+                                    $areaLabel = match ((int) $employee->source_device_id) {
+                                        1, 2 => '52',
+                                        3 => '27',
+                                        default => 'Lain',
+                                    };
+
+                                    $liveSearchText = strtolower(
+                                        trim(
+                                            ($employee->nama ?? '')
+                                            . ' '
+                                            . ($employee->employee_code ?? '')
+                                            . ' '
+                                            . ($employee->jabatan ?? '')
+                                            . ' '
+                                            . ($employee->source_kategori_karyawan_name ?? '')
+                                            . ' '
+                                            . ($employeeUser?->username ?? '')
+                                        )
+                                    );
+                                @endphp
+
+                                <tr
+                                    class="employeeResetRow hover:bg-slate-50/70"
+                                    data-search="{{ $liveSearchText }}"
+                                >
+                                    <td class="px-5 py-4 align-top">
                                         <input
                                             type="checkbox"
-                                            id="employeeResetHeaderCheckbox"
-                                            class="h-4.5 w-4.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                            name="employee_ids[]"
+                                            value="{{ $employee->id }}"
+                                            class="employeeResetCheckbox h-4.5 w-4.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                                         >
-                                    </th>
+                                    </td>
 
-                                    <th class="px-5 py-4 font-extrabold">
-                                        Karyawan
-                                    </th>
+                                    <td class="px-5 py-4">
+                                        <div class="font-extrabold text-slate-900">
+                                            {{ $employee->nama }}
+                                        </div>
 
-                                    <th class="px-5 py-4 font-extrabold">
-                                        Area
-                                    </th>
+                                        <div class="mt-0.5 text-xs font-bold text-slate-500">
+                                            {{ $employee->employee_code ?? '-' }}
+                                            @if ($employee->jabatan)
+                                                • {{ $employee->jabatan }}
+                                            @endif
+                                        </div>
 
-                                    <th class="px-5 py-4 font-extrabold">
-                                        Bagian
-                                    </th>
+                                        <div class="mt-1 text-[11px] font-semibold text-slate-500">
+                                            Login aktif:
+                                            <span class="font-mono font-extrabold text-slate-800">
+                                                {{ $employeeUser?->username ?? '-' }}
+                                            </span>
+                                        </div>
+                                    </td>
 
-                                    <th class="px-5 py-4 font-extrabold">
-                                        Status
-                                    </th>
+                                    <td class="px-5 py-4">
+                                        <span class="rounded-lg border border-cyan-200 bg-cyan-50 px-2 py-1 text-[10px] font-extrabold text-cyan-700">
+                                            AREA {{ $areaLabel }}
+                                        </span>
+                                    </td>
 
+                                    <td class="px-5 py-4">
+                                        <span class="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-extrabold text-blue-700">
+                                            {{ $employee->source_kategori_karyawan_name ?: '-' }}
+                                        </span>
+                                    </td>
+
+                                    <td class="px-5 py-4">
+                                        <div class="flex flex-col gap-1">
+                                            @if ($employeeUser?->must_change_username)
+                                                <span class="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-extrabold text-violet-700">
+                                                    Wajib Ganti ID
+                                                </span>
+                                            @else
+                                                <span class="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-extrabold text-sky-700">
+                                                    ID Aktif
+                                                </span>
+                                            @endif
+
+                                            @if ($employeeUser?->must_change_password)
+                                                <span class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold text-amber-700">
+                                                    Wajib Ganti PW
+                                                </span>
+                                            @else
+                                                <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
+                                                    Password Aktif
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </td>
                                 </tr>
 
-                            </thead>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="px-5 py-12 text-center text-sm font-bold text-slate-500">
+                                        Tidak ada karyawan pada hasil filter ini.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
 
+                    </table>
+                </div>
 
-                            <tbody
-                                id="employeeResetTableBody"
-                                class="divide-y divide-slate-100"
-                            >
+                <div class="border-t border-slate-200 bg-slate-50/80 px-5 py-4 sm:px-6">
+                    <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
 
-                                @forelse ($employees as $employee)
-
-                                    @php
-                                        $employeeUser = $employee->user;
-
-                                        $areaLabel = match ((int) $employee->source_device_id) {
-                                            1, 2 => '52',
-                                            3 => '27',
-                                            default => 'Lain',
-                                        };
-
-                                        $liveSearchText = strtolower(
-                                            trim(
-                                                ($employee->nama ?? '')
-                                                . ' '
-                                                . ($employee->employee_code ?? '')
-                                                . ' '
-                                                . ($employee->jabatan ?? '')
-                                                . ' '
-                                                . ($employee->source_kategori_karyawan_name ?? '')
-                                            )
-                                        );
-                                    @endphp
-
-
-                                    <tr
-                                        class="employeeResetRow hover:bg-slate-50/70"
-                                        data-search="{{ $liveSearchText }}"
-                                    >
-
-                                        <td class="px-5 py-4 align-top">
-
-                                            <input
-                                                type="checkbox"
-                                                name="employee_ids[]"
-                                                value="{{ $employee->id }}"
-                                                class="employeeResetCheckbox h-4.5 w-4.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-                                            >
-
-                                        </td>
-
-
-                                        <td class="px-5 py-4">
-
-                                            <div class="font-extrabold text-slate-900">
-                                                {{ $employee->nama }}
-                                            </div>
-
-                                            <div class="mt-0.5 text-xs font-bold text-slate-500">
-                                                {{ $employee->employee_code ?? '-' }}
-                                                @if ($employee->jabatan)
-                                                    • {{ $employee->jabatan }}
-                                                @endif
-                                            </div>
-
-                                            <div class="mt-1 text-[11px] font-semibold text-slate-500">
-                                                Login aktif:
-                                                <span class="font-mono font-extrabold text-slate-800">
-                                                    {{ $employeeUser?->username ?? '-' }}
-                                                </span>
-                                            </div>
-
-                                        </td>
-
-
-                                        <td class="px-5 py-4">
-
-                                            <span class="rounded-lg border border-cyan-200 bg-cyan-50 px-2 py-1 text-[10px] font-extrabold text-cyan-700">
-                                                AREA {{ $areaLabel }}
-                                            </span>
-
-                                        </td>
-
-
-                                        <td class="px-5 py-4">
-
-                                            <span class="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-extrabold text-blue-700">
-                                                {{ $employee->source_kategori_karyawan_name ?: '-' }}
-                                            </span>
-
-                                        </td>
-
-
-                                        <td class="px-5 py-4">
-
-                                            <div class="flex flex-col gap-1">
-
-                                                @if ($employeeUser?->must_change_username)
-
-                                                    <span class="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-extrabold text-violet-700">
-                                                        Wajib Ganti ID
-                                                    </span>
-
-                                                @else
-
-                                                    <span class="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-extrabold text-sky-700">
-                                                        ID Aktif
-                                                    </span>
-
-                                                @endif
-
-
-                                                @if ($employeeUser?->must_change_password)
-
-                                                    <span class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold text-amber-700">
-                                                        Wajib Ganti PW
-                                                    </span>
-
-                                                @else
-
-                                                    <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
-                                                        Password Aktif
-                                                    </span>
-
-                                                @endif
-
-                                            </div>
-
-                                        </td>
-
-                                    </tr>
-
-                                @empty
-
-                                    <tr>
-                                        <td
-                                            colspan="5"
-                                            class="px-5 py-12 text-center text-sm font-bold text-slate-500"
-                                        >
-                                            Tidak ada karyawan pada hasil filter ini.
-                                        </td>
-                                    </tr>
-
-                                @endforelse
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-
-                    <div class="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-
-                        <div class="min-w-0">
-                            <div class="text-xs text-slate-500">
-                                Hanya karyawan yang dicentang yang akan direset.
+                        <div>
+                            <div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                                Mode Reset Karyawan Terpilih
                             </div>
 
-                            <div class="mt-2 flex flex-wrap gap-3 text-xs font-bold text-slate-700">
-
+                            <div class="mt-2 flex flex-wrap gap-4 text-xs font-bold text-slate-700">
                                 <label class="inline-flex cursor-pointer items-center gap-2">
                                     <input
                                         type="radio"
@@ -463,52 +374,34 @@
                                     >
                                     ID Login + Password
                                 </label>
-
                             </div>
                         </div>
 
+                        <div class="flex flex-col gap-2 sm:flex-row">
+                            <button
+                                type="submit"
+                                id="resetSelectedEmployeesButton"
+                                disabled
+                                class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                Reset Karyawan Terpilih
+                            </button>
 
-                        <button
-                            type="submit"
-                            id="resetSelectedEmployeesButton"
-                            disabled
-                            class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                            Reset Karyawan Terpilih
-                        </button>
+                            <button
+                                type="button"
+                                id="openMassResetModal"
+                                class="rounded-xl border border-amber-300 bg-amber-100 px-5 py-3 text-sm font-extrabold text-amber-900 shadow-sm transition hover:bg-amber-200"
+                            >
+                                Reset Semua Hasil Filter
+                            </button>
+                        </div>
 
                     </div>
-
-                </form>
-
-            </div>
-
-        </div>
-
-
-        <div class="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <div class="text-xs font-extrabold uppercase tracking-wider text-amber-600">
-                        Reset Password Massal
-                    </div>
-                    <div class="mt-1 text-sm font-bold text-amber-900">
-                        Akan memproses {{ number_format($summary['matching_employees'] ?? 0) }} akun sesuai filter.
-                    </div>
-                    <p class="mt-1 text-xs leading-5 text-amber-700">
-                        Pilih apakah hanya password atau sekaligus ID Login yang dikembalikan ke ID Karyawan.
-                    </p>
                 </div>
+            </form>
 
-                <button
-                    type="button"
-                    id="openMassResetModal"
-                    class="rounded-xl bg-amber-500 px-5 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-amber-600"
-                >
-                    Reset Password Massal
-                </button>
-            </div>
         </div>
+
 
         <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div class="border-b border-slate-200 px-5 py-4">
