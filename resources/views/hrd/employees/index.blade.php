@@ -32,6 +32,10 @@
                     Nonaktif: {{ number_format($summary['inactive'] ?? 0) }}
                 </a>
 
+                <span class="rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-sm font-bold text-violet-800">
+                    Wajib Ganti ID: {{ number_format($summary['must_change_username'] ?? 0) }}
+                </span>
+
                 <span class="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-bold text-amber-800">
                     Wajib Ganti PW: {{ number_format($summary['must_change_password'] ?? 0) }}
                 </span>
@@ -86,6 +90,7 @@
             @forelse ($employees as $employee)
                 @php
                     $hasUser = (bool) $employee->user;
+                    $mustChangeUsername = (bool) ($employee->user?->must_change_username ?? false);
                     $mustChangePassword = (bool) ($employee->user?->must_change_password ?? false);
                     $annualBalance = $employee->employment_group === 'asia' ? $employee->leaveBalances->first() : null;
                 @endphp
@@ -127,10 +132,24 @@
                         </div>
                     @endif
 
-                    <div class="flex items-center justify-between border-t border-slate-100 pt-3">
-                        <span id="mobilePasswordBadge-{{ $employee->id }}" class="rounded-lg border px-2.5 py-1 text-xs font-extrabold {{ !$hasUser ? 'border-rose-200 bg-rose-50 text-rose-700' : ($mustChangePassword ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-700') }}">
-                            {{ !$hasUser ? 'Akun Tidak Ada' : ($mustChangePassword ? 'Wajib Ganti Password' : 'Password Aktif') }}
-                        </span>
+                    <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                        <div class="flex flex-wrap gap-1.5">
+                            @if (!$hasUser)
+                                <span class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-extrabold text-rose-700">
+                                    Akun Tidak Ada
+                                </span>
+                            @else
+                                <span id="mobileUsernameBadge-{{ $employee->id }}"
+                                      class="rounded-lg border px-2.5 py-1 text-xs font-extrabold {{ $mustChangeUsername ? 'border-violet-200 bg-violet-50 text-violet-800' : 'border-sky-200 bg-sky-50 text-sky-700' }}">
+                                    {{ $mustChangeUsername ? 'Wajib Ganti ID' : 'ID Aktif' }}
+                                </span>
+
+                                <span id="mobilePasswordBadge-{{ $employee->id }}"
+                                      class="rounded-lg border px-2.5 py-1 text-xs font-extrabold {{ $mustChangePassword ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-700' }}">
+                                    {{ $mustChangePassword ? 'Wajib Ganti PW' : 'Password Aktif' }}
+                                </span>
+                            @endif
+                        </div>
 
                         <button type="button"
                                 class="openEmployeeModalBtn rounded-xl border border-slate-300 bg-slate-50 px-4 py-1.5 text-sm font-extrabold text-slate-800 transition hover:bg-slate-100"
@@ -146,6 +165,7 @@
                                     'kategori' => $employee->source_kategori_karyawan_name ?: '-',
                                     'group' => $employee->employment_group,
                                     'has_user' => $hasUser,
+                                    'must_change_username' => $mustChangeUsername,
                                     'must_change_password' => $mustChangePassword,
                                     'entitlement' => $annualBalance?->entitlement ?? 12,
                                     'used' => $annualBalance?->used ?? 0,
@@ -183,6 +203,7 @@
                     @forelse ($employees as $employee)
                         @php
                             $hasUser = (bool) $employee->user;
+                            $mustChangeUsername = (bool) ($employee->user?->must_change_username ?? false);
                             $mustChangePassword = (bool) ($employee->user?->must_change_password ?? false);
                             $annualBalance = $employee->employment_group === 'asia' ? $employee->leaveBalances->first() : null;
                         @endphp
@@ -204,7 +225,20 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-5 py-4 font-mono font-bold text-slate-800">{{ $employee->user?->username ?: '-' }}</td>
+                            <td class="px-5 py-4">
+                                <div class="font-mono font-bold text-slate-800">
+                                    {{ $employee->user?->username ?: '-' }}
+                                </div>
+
+                                @if ($hasUser)
+                                    <div class="mt-1.5">
+                                        <span id="usernameBadge-{{ $employee->id }}"
+                                              class="rounded-lg border px-2 py-0.5 text-[11px] font-extrabold {{ $mustChangeUsername ? 'border-violet-200 bg-violet-50 text-violet-800' : 'border-sky-200 bg-sky-50 text-sky-700' }}">
+                                            {{ $mustChangeUsername ? 'Wajib Ganti ID' : 'ID Aktif' }}
+                                        </span>
+                                    </div>
+                                @endif
+                            </td>
                             <td class="px-5 py-4">
                                 <span id="passwordBadge-{{ $employee->id }}" class="rounded-lg border px-2.5 py-1 text-xs font-extrabold {{ !$hasUser ? 'border-rose-200 bg-rose-50 text-rose-700' : ($mustChangePassword ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-700') }}">
                                     {{ !$hasUser ? 'Akun Kosong' : ($mustChangePassword ? 'Wajib Ganti' : 'Aktif') }}
@@ -241,6 +275,7 @@
                                             'kategori' => $employee->source_kategori_karyawan_name ?: '-',
                                             'group' => $employee->employment_group,
                                             'has_user' => $hasUser,
+                                            'must_change_username' => $mustChangeUsername,
                                             'must_change_password' => $mustChangePassword,
                                             'entitlement' => $annualBalance?->entitlement ?? 12,
                                             'used' => $annualBalance?->used ?? 0,
@@ -341,8 +376,13 @@
                 {{-- Grid Detail --}}
                 <div class="grid grid-cols-2 gap-2.5">
                     <div class="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                        <span class="block text-xs font-bold uppercase tracking-wider text-slate-400">ID Login</span>
-                        <span id="modalUsername" class="mt-1 block font-mono font-black text-slate-900 text-sm">-</span>
+                        <span class="block text-xs font-bold uppercase tracking-wider text-slate-400">ID Login Aktif</span>
+                        <span id="modalUsername" class="mt-1 block break-all font-mono font-black text-slate-900 text-sm">-</span>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                        <span class="block text-xs font-bold uppercase tracking-wider text-slate-400">Status ID Login</span>
+                        <span id="modalUsernameStatusBadge" class="mt-1 inline-block rounded-lg px-2.5 py-1 text-xs font-extrabold">-</span>
                     </div>
                     <div class="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
                         <span class="block text-xs font-bold uppercase tracking-wider text-slate-400">Keaktifan</span>
@@ -389,25 +429,51 @@
                     </div>
                 </div>
 
-                {{-- Reset Password Card --}}
-                <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
-                    <div>
-                        <span class="block text-xs font-bold uppercase tracking-wider text-slate-400">Status Password</span>
-                        <span id="modalPasswordStatusBadge" class="mt-1 inline-block rounded-lg px-2.5 py-1 text-xs font-extrabold">-</span>
+                {{-- Reset Akun Card --}}
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <span class="block text-xs font-bold uppercase tracking-wider text-slate-400">Status Password</span>
+                            <span id="modalPasswordStatusBadge" class="mt-1 inline-block rounded-lg px-2.5 py-1 text-xs font-extrabold">-</span>
+                        </div>
+
+                        <button type="button"
+                                id="modalResetPasswordBtn"
+                                class="rounded-xl border border-amber-300 bg-amber-100 px-4 py-2 text-xs font-black text-amber-900 transition hover:bg-amber-200">
+                            Reset Akun
+                        </button>
                     </div>
-                    <button type="button" id="modalResetPasswordBtn" class="rounded-xl border border-amber-300 bg-amber-100 px-4 py-2 text-xs font-black text-amber-900 hover:bg-amber-200 transition">
-                        Reset Password
-                    </button>
+
+                    <p class="mt-2 text-[11px] leading-5 text-slate-500">
+                        Bisa reset password saja atau mengembalikan ID Login ke ID karyawan sekaligus membuat password sementara baru.
+                    </p>
                 </div>
 
-                {{-- Kotak Hasil Reset Password --}}
-                <div id="modalResetResultBox" class="hidden space-y-2 rounded-2xl border border-sky-200 bg-sky-50 p-3.5">
-                    <span class="text-xs font-bold text-sky-900">Password Sementara Baru:</span>
-                    <div class="flex items-center justify-between rounded-xl border border-sky-200 bg-white p-2.5 font-mono">
-                        <span id="modalNewPasswordText" class="text-base font-black tracking-widest text-slate-900">-</span>
-                        <button type="button" id="modalCopyPasswordBtn" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-extrabold text-white hover:bg-black transition">
-                            Salin
-                        </button>
+                {{-- Kotak Hasil Reset --}}
+                <div id="modalResetResultBox" class="hidden space-y-3 rounded-2xl border border-sky-200 bg-sky-50 p-3.5">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-sky-700">
+                            ID Login Setelah Reset
+                        </span>
+                        <div id="modalNewUsernameText" class="mt-1 break-all rounded-xl border border-sky-200 bg-white px-3 py-2 font-mono text-sm font-black text-slate-900">
+                            -
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-sky-700">
+                            Password Sementara Baru
+                        </span>
+
+                        <div class="mt-1 flex items-center justify-between rounded-xl border border-sky-200 bg-white p-2.5 font-mono">
+                            <span id="modalNewPasswordText" class="text-base font-black tracking-widest text-slate-900">-</span>
+
+                            <button type="button"
+                                    id="modalCopyPasswordBtn"
+                                    class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-extrabold text-white transition hover:bg-black">
+                                Salin
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -540,6 +606,15 @@
                 if (!activeEmployee) return;
                 resetNameText.textContent = activeEmployee.nama;
                 resetError?.classList.add('hidden');
+
+                const defaultMode = document.querySelector(
+                    'input[name="employee_reset_mode"][value="password_only"]'
+                );
+
+                if (defaultMode) {
+                    defaultMode.checked = true;
+                }
+
                 toggleModal(confirmModal, confirmBox, true);
             });
 
@@ -557,6 +632,14 @@
                     formData.append('_token', '{{ csrf_token() }}');
                     formData.append('leave_year', activeEmployee.leave_year);
 
+                    const selectedResetMode =
+                        document.querySelector(
+                            'input[name="employee_reset_mode"]:checked'
+                        )?.value
+                        ?? 'password_only';
+
+                    formData.append('reset_mode', selectedResetMode);
+
                     const response = await fetch(activeEmployee.reset_url, {
                         method: 'POST',
                         body: formData,
@@ -565,22 +648,62 @@
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || 'Reset password gagal.');
 
+                    const resetMode = data.data.reset_mode || 'password_only';
+                    const newUsername = data.data.username || activeEmployee.username;
+
+                    document.getElementById('modalNewUsernameText').textContent = newUsername;
                     document.getElementById('modalNewPasswordText').textContent = data.data.password;
                     document.getElementById('modalResetResultBox').classList.remove('hidden');
 
+                    activeEmployee.username = newUsername;
+                    activeEmployee.must_change_password = true;
+
+                    if (resetMode === 'login_and_password') {
+                        activeEmployee.must_change_username = true;
+                    }
+
+                    document.getElementById('modalUsername').textContent = newUsername;
+
                     const pwId = `passwordBadge-${activeEmployee.id}`;
-                    const mobId = `mobilePasswordBadge-${activeEmployee.id}`;
-                    [pwId, mobId].forEach(id => {
+                    const mobPwId = `mobilePasswordBadge-${activeEmployee.id}`;
+
+                    [pwId, mobPwId].forEach(id => {
                         const el = document.getElementById(id);
+
                         if (el) {
-                            el.textContent = id.startsWith('passwordBadge-') ? 'Wajib Ganti' : 'Wajib Ganti PW';
-                            el.className = 'rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-800';
+                            el.textContent = id.startsWith('passwordBadge-')
+                                ? 'Wajib Ganti'
+                                : 'Wajib Ganti PW';
+
+                            el.className =
+                                'rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-800';
                         }
                     });
 
                     const pwModalBadge = document.getElementById('modalPasswordStatusBadge');
                     pwModalBadge.textContent = 'Wajib Ganti Password';
-                    pwModalBadge.className = 'mt-1 inline-block rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-extrabold text-amber-800';
+                    pwModalBadge.className =
+                        'mt-1 inline-block rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-800';
+
+                    if (resetMode === 'login_and_password') {
+                        const usernameId = `usernameBadge-${activeEmployee.id}`;
+                        const mobileUsernameId = `mobileUsernameBadge-${activeEmployee.id}`;
+
+                        [usernameId, mobileUsernameId].forEach(id => {
+                            const el = document.getElementById(id);
+
+                            if (el) {
+                                el.textContent = 'Wajib Ganti ID';
+                                el.className =
+                                    'rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-extrabold text-violet-800';
+                            }
+                        });
+
+                        const usernameModalBadge = document.getElementById('modalUsernameStatusBadge');
+                        usernameModalBadge.textContent = 'Wajib Ganti ID';
+                        usernameModalBadge.className =
+                            'mt-1 inline-block rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-extrabold text-violet-800';
+                    }
 
                     toggleModal(confirmModal, confirmBox, false);
                 } catch (err) {
