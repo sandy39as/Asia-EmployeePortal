@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeTempCredential;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class EmployeeCredentialController extends Controller
 {
@@ -92,6 +94,8 @@ class EmployeeCredentialController extends Controller
     {
         $this->authorizeMaster($request);
 
+        @set_time_limit(0);
+
         $validated = $request->validate([
             'area' => [
                 'nullable',
@@ -109,16 +113,12 @@ class EmployeeCredentialController extends Controller
                 ]),
             ],
 
-            /*
-            |--------------------------------------------------------------------------
-            | RESET KARYAWAN TERPILIH
-            |--------------------------------------------------------------------------
-            */
             'employee_ids' => [
                 'nullable',
                 'array',
                 'min:1',
             ],
+
             'employee_ids.*' => [
                 'integer',
                 Rule::exists('employees', 'id')->where(
@@ -130,17 +130,26 @@ class EmployeeCredentialController extends Controller
             ],
         ]);
 
-        $area = trim((string) ($validated['area'] ?? ''));
-        $category = trim((string) ($validated['category'] ?? ''));
-        $search = trim((string) ($validated['search'] ?? ''));
-        $allowAll = (bool) ($validated['allow_all'] ?? false);
+        $area = trim(
+            (string) ($validated['area'] ?? '')
+        );
+
+        $category = trim(
+            (string) ($validated['category'] ?? '')
+        );
+
+        $search = trim(
+            (string) ($validated['search'] ?? '')
+        );
+
+        $allowAll =
+            (bool) ($validated['allow_all'] ?? false);
 
         $resetMode =
             $validated['reset_mode'];
 
         $selectedEmployeeIds = collect(
-            $validated['employee_ids']
-            ?? []
+            $validated['employee_ids'] ?? []
         )
             ->map(
                 fn ($id) => (int) $id
@@ -178,112 +187,88 @@ class EmployeeCredentialController extends Controller
             ->whereHas('user');
 
         if ($resetSelectedOnly) {
-            /*
-            |--------------------------------------------------------------------------
-            | MODE CHECKBOX
-            |--------------------------------------------------------------------------
-            |
-            | Jika ada employee_ids[], HANYA karyawan yang dicentang yang diproses.
-            | Filter tidak menambah karyawan lain.
-            |
-            */
             $employeesQuery->whereIn(
                 'id',
                 $selectedEmployeeIds->all()
             );
         } else {
-            /*
-            |--------------------------------------------------------------------------
-            | MODE FILTER MASSAL
-            |--------------------------------------------------------------------------
-            */
             $this->applyEmployeeFilters(
                 $employeesQuery,
                 $filters
             );
         }
 
-        $employees = $employeesQuery->get();
+        $targetCount =
+            (clone $employeesQuery)->count();
 
-        if ($employees->isEmpty()) {
+        if ($targetCount < 1) {
             return back()->withErrors([
                 'mass_reset' =>
                     'Tidak ada akun karyawan yang cocok dengan filter.',
             ]);
         }
 
-        $count = 0;
+        $successCount = 0;
+        $failedCount = 0;
+        $failedEmployees = [];
 
-        DB::transaction(function () use (
-            $employees,
-            $request,
-            $resetMode,
-            &$count
-        ) {
-            foreach ($employees as $employee) {
-                $user = $employee->user;
+        $createdBy =
+            $request->user()->id;
 
-                if (! $user) {
-                    continue;
-                }
+        /*
+        |--------------------------------------------------------------------------
+        | TRANSACTION PER USER
+        |--------------------------------------------------------------------------
+        |
+        | Jangan bungkus seluruh mass reset ke satu transaction besar.
+        | Satu row yang terkunci tidak boleh menggagalkan seluruh batch.
+        |
+        */
 
-                $plainPassword = (string) random_int(
-                    100000,
-                    999999
-                );
-
-                $userData = [
-                    'password' =>
-                        Hash::make(
-                            $plainPassword
-                        ),
-
-                    'must_change_password' =>
-                        true,
-                ];
-
-                if (
-                    $resetMode
-                    ===
-                    'login_and_password'
+        $employeesQuery
+            ->orderBy('id')
+            ->chunkById(
+                50,
+                function ($employees) use (
+                    $resetMode,
+                    $createdBy,
+                    &$successCount,
+                    &$failedCount,
+                    &$failedEmployees
                 ) {
-                    /*
-                    |--------------------------------------------------------------------------
-                    | RESET ID LOGIN KE ID KARYAWAN
-                    |--------------------------------------------------------------------------
-                    |
-                    | Setelah login menggunakan employee_code, user wajib membuat
-                    | ID Login / email baru lagi.
-                    |
-                    */
-                    $userData['username'] =
-                        $employee->employee_code;
+                    foreach ($employees as $employee) {
+                        $user = $employee->user;
 
-                    $userData['must_change_username'] =
-                        true;
-                }
+                        if (! $user) {
+                            continue;
+                        }
 
-                $user->forceFill(
-                    $userData
-                )->save();
+                        try {
+                            $this->resetCredentialForEmployee(
+                                $employee,
+                                $user,
+                                $resetMode,
+                                $createdBy
+                            );
 
-                EmployeeTempCredential::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                    ],
-                    [
-                        'employee_id' => $employee->id,
-                        'password_encrypted' => $plainPassword,
-                        'created_by' => $request->user()->id,
-                        'generated_at' => now(),
-                        'exported_at' => null,
-                        'expires_at' => now()->addDays(7),
-                    ]
-                );
+                            $successCount++;
+                        } catch (Throwable $e) {
+                            report($e);
 
-                $count++;
-            }
-        });
+                            $failedCount++;
+
+                            if (count($failedEmployees) < 20) {
+                                $failedEmployees[] =
+                                    $employee->nama
+                                    . ' ('
+                                    . $employee->employee_code
+                                    . ')';
+                            }
+                        }
+                    }
+                },
+                'id'
+            );
 
         $modeLabel =
             $resetSelectedOnly
@@ -291,11 +276,41 @@ class EmployeeCredentialController extends Controller
                 : 'hasil filter';
 
         $resetLabel =
-            $resetMode
-            ===
-            'login_and_password'
+            $resetMode === 'login_and_password'
                 ? 'ID Login + password'
                 : 'password';
+
+        $message =
+            $successCount
+            . ' dari '
+            . $targetCount
+            . ' akun '
+            . $modeLabel
+            . ' berhasil direset '
+            . $resetLabel
+            . '.';
+
+        if ($failedCount > 0) {
+            $message .=
+                ' '
+                . $failedCount
+                . ' akun gagal/terkunci dan dilewati.';
+
+            if (! empty($failedEmployees)) {
+                $message .=
+                    ' Gagal: '
+                    . implode(', ', $failedEmployees);
+
+                if ($failedCount > count($failedEmployees)) {
+                    $message .= ', dan lainnya';
+                }
+
+                $message .= '.';
+            }
+        } else {
+            $message .=
+                ' Password wajib diganti saat login.';
+        }
 
         return redirect()
             ->route(
@@ -306,15 +321,13 @@ class EmployeeCredentialController extends Controller
                 )
             )
             ->with(
-                'success',
-                $count
-                . ' akun '
-                . $modeLabel
-                . ' berhasil direset '
-                . $resetLabel
-                . '. Password wajib diganti saat login.'
+                $failedCount > 0
+                    ? 'warning'
+                    : 'success',
+                $message
             );
     }
+
 
     public function resetOne(
         Request $request,
@@ -350,55 +363,15 @@ class EmployeeCredentialController extends Controller
             999999
         );
 
-        DB::transaction(function () use (
+        $this->resetCredentialForEmployee(
             $employee,
-            $request,
-            $plainPassword,
-            $resetMode
-        ) {
-            $userData = [
-                'password' =>
-                    Hash::make(
-                        $plainPassword
-                    ),
+            $employee->user,
+            $resetMode,
+            $request->user()->id,
+            $plainPassword
+        );
 
-                'must_change_password' =>
-                    true,
-            ];
-
-            if (
-                $resetMode
-                ===
-                'login_and_password'
-            ) {
-                $userData['username'] =
-                    $employee->employee_code;
-
-                $userData['must_change_username'] =
-                    true;
-            }
-
-            $employee
-                ->user
-                ->forceFill(
-                    $userData
-                )
-                ->save();
-
-            EmployeeTempCredential::updateOrCreate(
-                [
-                    'user_id' => $employee->user->id,
-                ],
-                [
-                    'employee_id' => $employee->id,
-                    'password_encrypted' => $plainPassword,
-                    'created_by' => $request->user()->id,
-                    'generated_at' => now(),
-                    'exported_at' => null,
-                    'expires_at' => now()->addDays(7),
-                ]
-            );
-        });
+        $employee->user->refresh();
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -571,6 +544,122 @@ class EmployeeCredentialController extends Controller
             ]
         );
     }
+
+    private function resetCredentialForEmployee(
+        Employee $employee,
+        $user,
+        string $resetMode,
+        int $createdBy,
+        ?string $plainPassword = null
+    ): string {
+        $plainPassword =
+            $plainPassword
+            ?? (string) random_int(
+                100000,
+                999999
+            );
+
+        $maxAttempts = 3;
+        $attempt = 0;
+
+        while (true) {
+            $attempt++;
+
+            try {
+                DB::transaction(
+                    function () use (
+                        $employee,
+                        $user,
+                        $resetMode,
+                        $createdBy,
+                        $plainPassword
+                    ) {
+                        $lockedUser =
+                            \App\Models\User::query()
+                                ->whereKey($user->id)
+                                ->lockForUpdate()
+                                ->firstOrFail();
+
+                        $userData = [
+                            'password' =>
+                                Hash::make(
+                                    $plainPassword
+                                ),
+
+                            'must_change_password' =>
+                                true,
+                        ];
+
+                        if (
+                            $resetMode ===
+                            'login_and_password'
+                        ) {
+                            $userData['username'] =
+                                $employee->employee_code;
+
+                            $userData['must_change_username'] =
+                                true;
+                        }
+
+                        $lockedUser
+                            ->forceFill($userData)
+                            ->save();
+
+                        EmployeeTempCredential::updateOrCreate(
+                            [
+                                'user_id' =>
+                                    $lockedUser->id,
+                            ],
+                            [
+                                'employee_id' =>
+                                    $employee->id,
+
+                                'password_encrypted' =>
+                                    $plainPassword,
+
+                                'created_by' =>
+                                    $createdBy,
+
+                                'generated_at' =>
+                                    now(),
+
+                                'exported_at' =>
+                                    null,
+
+                                'expires_at' =>
+                                    now()->addDays(7),
+                            ]
+                        );
+                    }
+                );
+
+                return $plainPassword;
+
+            } catch (QueryException $e) {
+                $mysqlError =
+                    (int) ($e->errorInfo[1] ?? 0);
+
+                $isLockError =
+                    in_array(
+                        $mysqlError,
+                        [1205, 1213],
+                        true
+                    );
+
+                if (
+                    ! $isLockError
+                    || $attempt >= $maxAttempts
+                ) {
+                    throw $e;
+                }
+
+                usleep(
+                    250000 * $attempt
+                );
+            }
+        }
+    }
+
 
     private function validatedFilters(
         Request $request
