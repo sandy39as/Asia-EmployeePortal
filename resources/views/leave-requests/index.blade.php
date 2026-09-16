@@ -1,5 +1,36 @@
 <x-app-layout>
 
+    {{-- ============================================================= --}}
+    {{-- MOBILE MODAL FIX
+         - 100dvh mengikuti viewport browser iPhone/Android
+         - header & footer modal tetap terlihat
+         - hanya isi modal yang scroll
+         - safe-area notch/home indicator ikut dihitung
+    {{-- ============================================================= --}}
+    <style>
+        #createLeaveModal,
+        [id^="employeeLeaveModal-"],
+        [id^="employeeDocModal-"] {
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        #createLeaveModalScroll {
+            scrollbar-gutter: stable;
+        }
+
+        @media (max-width: 639px) {
+            #createLeaveModalBox {
+                width: 100%;
+            }
+
+            /* Ketika keyboard iPhone/Android terbuka, scroll area tetap nyaman. */
+            #createLeaveModalScroll {
+                scroll-padding-bottom: 24px;
+            }
+        }
+    </style>
+
     <div class="max-w-5xl mx-auto space-y-3 sm:space-y-4">
 
         {{-- ========================================================= --}}
@@ -309,16 +340,20 @@
     {{-- ============================================================= --}}
     <div
         id="createLeaveModal"
-        class="fixed inset-0 z-[110] hidden items-center justify-center bg-slate-900/50 px-3 py-4 backdrop-blur-xs sm:px-4"
+        class="fixed inset-0 z-[110] hidden h-[100dvh] min-h-0 items-start justify-center overflow-hidden bg-slate-900/50 px-3 backdrop-blur-xs sm:items-center sm:px-4"
+        style="
+            padding-top: max(12px, env(safe-area-inset-top));
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+        "
     >
 
         <div
             id="createLeaveModalBox"
-            class="max-h-[92vh] w-full max-w-lg scale-95 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white opacity-0 shadow-2xl transition-all duration-200"
+            class="flex max-h-[calc(100dvh-24px)] min-h-0 w-full max-w-lg scale-95 flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white opacity-0 shadow-2xl transition-all duration-200 sm:max-h-[92dvh]"
         >
 
-            {{-- HEADER --}}
-            <div class="sticky top-0 z-20 flex items-center justify-between border-b border-[#e2e8f0] bg-white/95 px-5 py-4 backdrop-blur">
+            {{-- HEADER - SELALU TERLIHAT --}}
+            <div class="z-20 flex shrink-0 items-center justify-between border-b border-[#e2e8f0] bg-white px-5 py-3.5 sm:py-4">
 
                 <div>
                     <h3 class="text-base font-extrabold text-slate-900">
@@ -346,12 +381,18 @@
                 method="POST"
                 action="{{ route('leave-requests.store') }}"
                 enctype="multipart/form-data"
+                class="flex min-h-0 flex-1 flex-col overflow-hidden"
             >
 
                 @csrf
 
 
-                <div class="p-5 space-y-4">
+                {{-- HANYA ISI FORM YANG SCROLL --}}
+                <div
+                    id="createLeaveModalScroll"
+                    class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-5"
+                    style="-webkit-overflow-scrolling: touch;"
+                >
 
                     {{-- INFO USER --}}
                     <div class="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
@@ -801,8 +842,11 @@
                 </div>
 
 
-                {{-- FOOTER --}}
-                <div class="sticky bottom-0 z-20 flex justify-end gap-2 border-t border-[#e2e8f0] bg-white/95 px-5 py-3.5 backdrop-blur">
+                {{-- FOOTER - SELALU TERLIHAT --}}
+                <div
+                    class="z-20 flex shrink-0 justify-end gap-2 border-t border-[#e2e8f0] bg-white px-4 py-3 sm:px-5 sm:py-3.5"
+                    style="padding-bottom: max(12px, env(safe-area-inset-bottom));"
+                >
 
                     <button
                         type="button"
@@ -1008,16 +1052,20 @@
 
         <div
             id="{{ $modalId }}"
-            class="fixed inset-0 z-[110] hidden items-center justify-center bg-slate-900/50 px-3 py-4 backdrop-blur-xs sm:px-4"
+            class="fixed inset-0 z-[110] hidden h-[100dvh] min-h-0 items-start justify-center overflow-hidden bg-slate-900/50 px-3 backdrop-blur-xs sm:items-center sm:px-4"
+            style="
+                padding-top: max(12px, env(safe-area-inset-top));
+                padding-bottom: max(12px, env(safe-area-inset-bottom));
+            "
         >
 
             <div
                 id="{{ $modalBoxId }}"
-                class="max-h-[92vh] w-full max-w-lg scale-95 overflow-y-auto rounded-2xl border border-[#e2e8f0] bg-white opacity-0 shadow-2xl transition-all duration-200"
+                class="flex max-h-[calc(100dvh-24px)] min-h-0 w-full max-w-lg scale-95 flex-col overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white opacity-0 shadow-2xl transition-all duration-200 sm:max-h-[92dvh]"
             >
 
-                {{-- HEADER --}}
-                <div class="sticky top-0 z-20 flex items-center justify-between border-b border-[#e2e8f0] bg-white/95 px-5 py-4 backdrop-blur">
+                {{-- HEADER - SELALU TERLIHAT --}}
+                <div class="z-20 flex shrink-0 items-center justify-between border-b border-[#e2e8f0] bg-white px-5 py-3.5 sm:py-4">
 
                     <div>
 
@@ -1045,7 +1093,10 @@
                 </div>
 
 
-                <div class="p-5 space-y-4">
+                <div
+                    class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-5"
+                    style="-webkit-overflow-scrolling: touch;"
+                >
 
                     {{-- ===================================================== --}}
                     {{-- STATUS FINAL --}}
@@ -1450,8 +1501,11 @@
                 </div>
 
 
-                {{-- FOOTER --}}
-                <div class="sticky bottom-0 z-20 flex justify-between gap-2 border-t border-[#e2e8f0] bg-white/95 px-5 py-3.5 backdrop-blur">
+                {{-- FOOTER - SELALU TERLIHAT --}}
+                <div
+                    class="z-20 flex shrink-0 justify-between gap-2 border-t border-[#e2e8f0] bg-white px-4 py-3 sm:px-5 sm:py-3.5"
+                    style="padding-bottom: max(12px, env(safe-area-inset-bottom));"
+                >
 
                     <button
                         type="button"
@@ -1508,12 +1562,16 @@
 
             <div
                 id="{{ $imgModalId }}"
-                class="fixed inset-0 z-[120] hidden items-center justify-center bg-slate-950/75 p-3 backdrop-blur-sm sm:p-6"
+                class="fixed inset-0 z-[120] hidden h-[100dvh] min-h-0 items-start justify-center overflow-hidden bg-slate-950/75 px-3 backdrop-blur-sm sm:items-center sm:px-6"
+                style="
+                    padding-top: max(12px, env(safe-area-inset-top));
+                    padding-bottom: max(12px, env(safe-area-inset-bottom));
+                "
             >
 
                 <div
                     id="{{ $imgModalBoxId }}"
-                    class="relative max-h-[92vh] w-full max-w-2xl scale-95 overflow-hidden rounded-3xl bg-white opacity-0 shadow-2xl transition-all duration-200 flex flex-col"
+                    class="relative flex max-h-[calc(100dvh-24px)] min-h-0 w-full max-w-2xl scale-95 flex-col overflow-hidden rounded-3xl bg-white opacity-0 shadow-2xl transition-all duration-200 sm:max-h-[92dvh]"
                 >
 
                     <div class="flex items-center justify-between border-b border-[#e2e8f0] bg-white px-5 py-3.5">
