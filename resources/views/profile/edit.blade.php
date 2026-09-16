@@ -140,7 +140,7 @@
 
 
                     <p class="mt-2 text-xs leading-5 text-slate-500">
-                        Boleh menggunakan huruf, angka, titik, underscore, @, +, atau tanda minus.
+                        Bebas
                     </p>
 
                 </div>

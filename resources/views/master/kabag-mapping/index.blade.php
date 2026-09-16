@@ -244,53 +244,75 @@
                             </span>
                         </div>
 
-                        {{-- FILTER FORM --}}
-                        <form method="GET" action="{{ route('master.kabag-mapping.index') }}" class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-12">
-                            <input type="hidden" name="kabag_id" value="{{ $selectedKabag->id }}">
+                        {{-- FILTER + LIVE SEARCH --}}
+                        <div class="mt-3 space-y-2">
+                            <input
+                                type="text"
+                                id="liveAvailableSearch"
+                                value="{{ $search }}"
+                                placeholder="Cari nama / ID / jabatan..."
+                                autocomplete="off"
+                                class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none"
+                            >
 
-                            <div class="sm:col-span-4">
-                                <input
-                                    type="text"
-                                    name="search"
-                                    value="{{ $search }}"
-                                    placeholder="Cari nama / ID / jabatan..."
-                                    class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none"
-                                >
-                            </div>
+                            <form
+                                method="GET"
+                                action="{{ route('master.kabag-mapping.index') }}"
+                                id="availableEmployeeFilterForm"
+                                class="grid grid-cols-1 gap-2 sm:grid-cols-12"
+                            >
+                                <input type="hidden" name="kabag_id" value="{{ $selectedKabag->id }}">
 
-                            <div class="sm:col-span-3">
-                                <select name="category" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-amber-400 focus:outline-none">
-                                    <option value="">Semua Bagian</option>
-                                    @foreach ($categories as $categoryOption)
-                                        <option value="{{ $categoryOption }}" @selected($category === $categoryOption)>{{ $categoryOption }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                                <div class="sm:col-span-5">
+                                    <select
+                                        name="category"
+                                        onchange="this.form.submit()"
+                                        class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-amber-400 focus:outline-none"
+                                    >
+                                        <option value="">Semua Bagian</option>
+                                        @foreach ($categories as $categoryOption)
+                                            <option value="{{ $categoryOption }}" @selected($category === $categoryOption)>{{ $categoryOption }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
-                            <div class="sm:col-span-3">
-                                <select name="area" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-amber-400 focus:outline-none">
-                                    <option value="">Semua Area</option>
-                                    <option value="52" @selected(($area ?? '') === '52')>Area 52</option>
-                                    <option value="27" @selected(($area ?? '') === '27')>Area 27</option>
-                                    <option value="other" @selected(($area ?? '') === 'other')>Area Lain</option>
-                                </select>
-                            </div>
+                                <div class="sm:col-span-5">
+                                    <select
+                                        name="area"
+                                        onchange="this.form.submit()"
+                                        class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800 focus:border-amber-400 focus:outline-none"
+                                    >
+                                        <option value="">Semua Area</option>
+                                        <option value="52" @selected(($area ?? '') === '52')>Area 52</option>
+                                        <option value="27" @selected(($area ?? '') === '27')>Area 27</option>
+                                        <option value="other" @selected(($area ?? '') === 'other')>Area Lain</option>
+                                    </select>
+                                </div>
 
-                            <div class="flex gap-1.5 sm:col-span-2">
-                                <button type="submit" class="flex-1 rounded-xl bg-amber-500 px-3 py-2 text-xs font-extrabold text-white hover:bg-amber-600">
-                                    Cari
-                                </button>
-                                @if ($search !== '' || $category !== '' || ($area ?? '') !== '')
+                                <div class="sm:col-span-2">
                                     <a
                                         href="{{ route('master.kabag-mapping.index', ['kabag_id' => $selectedKabag->id]) }}"
-                                        class="flex items-center justify-center rounded-xl border border-amber-200 bg-white px-2.5 py-2 text-xs font-extrabold text-amber-700 hover:bg-amber-100"
-                                        title="Reset filter"
+                                        class="flex h-full w-full items-center justify-center rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-extrabold text-amber-700 hover:bg-amber-100"
                                     >
-                                        ×
+                                        Reset
                                     </a>
-                                @endif
+                                </div>
+                            </form>
+
+                            <div class="flex items-center justify-between rounded-xl border border-amber-100 bg-white/70 px-3 py-2 text-[11px] text-slate-500">
+                                <span>
+                                    Tampil:
+                                    <strong id="liveAvailableVisibleCount" class="font-black text-slate-900">
+                                        {{ $availableEmployees->count() }}
+                                    </strong>
+                                    karyawan
+                                </span>
+
+                                <span class="font-semibold text-amber-700">
+                                    Pencarian live tanpa reload
+                                </span>
                             </div>
-                        </form>
+                        </div>
                     </div>
 
                     {{-- CHECKBOX LIST ASSIGN --}}
@@ -299,7 +321,23 @@
                         <div class="max-h-[520px] divide-y divide-slate-100 overflow-y-auto">
                             @forelse ($availableEmployees as $employee)
                                 @php $areaMeta = $resolveArea($employee->source_device_id); @endphp
-                                <label class="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-amber-50/40">
+                                @php
+                                    $availableSearchText = strtolower(
+                                        trim(
+                                            ($employee->nama ?? '')
+                                            . ' '
+                                            . ($employee->employee_code ?? '')
+                                            . ' '
+                                            . ($employee->jabatan ?? '')
+                                            . ' '
+                                            . ($employee->source_kategori_karyawan_name ?? '')
+                                        )
+                                    );
+                                @endphp
+                                <label
+                                    class="availableEmployeeRow flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-amber-50/40"
+                                    data-search="{{ $availableSearchText }}"
+                                >
                                     <div class="pt-0.5">
                                         <input
                                             type="checkbox"
@@ -410,7 +448,7 @@
                         class="hidden"
                     >
                         @csrf
-                        <input type="hidden" name="search" value="{{ $search }}">
+                        <input type="hidden" name="search" id="bulkAssignSearch" value="{{ $search }}">
                         <input type="hidden" name="category" value="{{ $category }}">
                         <input type="hidden" name="area" value="{{ $area ?? '' }}">
                     </form>
@@ -452,6 +490,11 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const availableCheckboxes = Array.from(document.querySelectorAll('.availableEmployeeCheckbox'));
+            const availableRows = Array.from(document.querySelectorAll('.availableEmployeeRow'));
+            const liveAvailableSearch = document.getElementById('liveAvailableSearch');
+            const liveAvailableVisibleCount = document.getElementById('liveAvailableVisibleCount');
+            const bulkAssignSearch = document.getElementById('bulkAssignSearch');
+
             const countElement = document.getElementById('selectedAvailableCount');
             const selectAllButton = document.getElementById('selectAllAvailable');
             const assignForm = document.getElementById('assignEmployeesForm');
@@ -482,18 +525,74 @@
                 }
             };
 
+            const getVisibleCheckboxes = () => {
+                return availableRows
+                    .filter(row => !row.classList.contains('hidden'))
+                    .map(row => row.querySelector('.availableEmployeeCheckbox'))
+                    .filter(Boolean);
+            };
+
             const refreshCount = () => {
+                const selectedCount = availableCheckboxes.filter(c => c.checked).length;
+
                 if (countElement) {
-                    countElement.textContent = availableCheckboxes.filter(c => c.checked).length;
+                    countElement.textContent = selectedCount;
+                }
+
+                const visibleCheckboxes = getVisibleCheckboxes();
+                const allVisibleSelected =
+                    visibleCheckboxes.length > 0
+                    && visibleCheckboxes.every(cb => cb.checked);
+
+                if (selectAllButton) {
+                    selectAllButton.textContent =
+                        allVisibleSelected
+                            ? 'Hapus Pilihan Tampil'
+                            : 'Pilih Semua Tampil';
                 }
             };
+
+            const applyLiveAvailableSearch = () => {
+                const keyword = (liveAvailableSearch?.value ?? '')
+                    .trim()
+                    .toLowerCase();
+
+                let visibleCount = 0;
+
+                availableRows.forEach(row => {
+                    const haystack = (row.dataset.search ?? '').toLowerCase();
+                    const visible = keyword === '' || haystack.includes(keyword);
+
+                    row.classList.toggle('hidden', !visible);
+
+                    if (visible) {
+                        visibleCount++;
+                    }
+                });
+
+                if (liveAvailableVisibleCount) {
+                    liveAvailableVisibleCount.textContent = visibleCount;
+                }
+
+                if (bulkAssignSearch) {
+                    bulkAssignSearch.value = liveAvailableSearch?.value?.trim() ?? '';
+                }
+
+                refreshCount();
+            };
+
+            liveAvailableSearch?.addEventListener('input', applyLiveAvailableSearch);
 
             availableCheckboxes.forEach(cb => cb.addEventListener('change', refreshCount));
 
             selectAllButton?.addEventListener('click', () => {
-                const shouldCheck = availableCheckboxes.some(cb => !cb.checked);
-                availableCheckboxes.forEach(cb => cb.checked = shouldCheck);
-                selectAllButton.textContent = shouldCheck ? 'Hapus Pilihan' : 'Pilih Semua Hasil';
+                const visibleCheckboxes = getVisibleCheckboxes();
+                const shouldCheck = visibleCheckboxes.some(cb => !cb.checked);
+
+                visibleCheckboxes.forEach(cb => {
+                    cb.checked = shouldCheck;
+                });
+
                 refreshCount();
             });
 
@@ -524,6 +623,8 @@
                 this.textContent = 'Menambahkan...';
                 bulkForm.submit();
             });
+
+            applyLiveAvailableSearch();
 
             const flash = document.getElementById('successFlash');
             if (flash) {
