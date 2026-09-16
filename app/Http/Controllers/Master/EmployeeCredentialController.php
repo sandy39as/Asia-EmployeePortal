@@ -45,8 +45,7 @@ class EmployeeCredentialController extends Controller
         $employees = $employeesQuery
             ->orderBy('source_kategori_karyawan_name')
             ->orderBy('nama')
-            ->paginate(25)
-            ->withQueryString();
+            ->get();
 
         $credentialQuery = EmployeeTempCredential::query()
             ->with(['employee', 'user'])
@@ -62,8 +61,7 @@ class EmployeeCredentialController extends Controller
 
         $credentials = $credentialQuery
             ->latest('generated_at')
-            ->paginate(25, ['*'], 'credential_page')
-            ->withQueryString();
+            ->get();
 
         $summary = [
             'matching_employees' => (clone $employeesQuery)->count(),
