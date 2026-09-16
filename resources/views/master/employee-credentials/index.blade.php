@@ -549,12 +549,6 @@
                     </tbody>
                 </table>
             </div>
-
-            @if ($credentials->hasPages())
-                <div class="border-t border-slate-200 p-4">
-                    {{ $credentials->links() }}
-                </div>
-            @endif
         </div>
     </div>
 
