@@ -47,7 +47,22 @@
                         <div class="px-4 py-2 border-b border-[#e2e8f0] bg-slate-50">
                             <p class="font-extrabold text-slate-900 truncate">{{ auth()->user()->name }}</p>
                             <p class="text-xs text-slate-500 font-semibold capitalize">{{ auth()->user()->role ?? 'Karyawan' }}</p>
+                            <p class="mt-1 truncate font-mono text-[11px] font-bold text-slate-400">
+                                {{ auth()->user()->username ?? '-' }}
+                            </p>
                         </div>
+
+                        <a
+                            href="{{ route('profile.edit') }}"
+                            class="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition font-bold {{ request()->routeIs('profile.*') ? 'bg-slate-100 text-slate-900' : '' }}"
+                        >
+                            <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15.75A3.75 3.75 0 1012 8.25a3.75 3.75 0 000 7.5zM19.5 12a7.5 7.5 0 01-.123 1.35l2.036 1.586-1.875 3.248-2.51-1.012a7.58 7.58 0 01-2.338 1.35L14.31 21h-4.62l-.38-2.478a7.58 7.58 0 01-2.338-1.35l-2.51 1.012-1.875-3.248 2.036-1.586A7.5 7.5 0 014.5 12c0-.46.041-.91.123-1.35L2.587 9.064l1.875-3.248 2.51 1.012A7.58 7.58 0 019.31 5.478L9.69 3h4.62l.38 2.478a7.58 7.58 0 012.338 1.35l2.51-1.012 1.875 3.248-2.036 1.586c.082.44.123.89.123 1.35z" />
+                            </svg>
+                            Pengaturan Profil
+                        </a>
+
+                        <div class="my-1 border-t border-[#e2e8f0]"></div>
 
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -268,7 +283,31 @@
                         </svg>
                     </button>
 
-                    <div id="desktopUserMenuContent" class="hidden absolute right-0 mt-2 w-52 rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-2 z-50 text-sm font-bold text-slate-700">
+                    <div id="desktopUserMenuContent" class="hidden absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-[#e2e8f0] shadow-xl py-2 z-50 text-sm font-bold text-slate-700">
+
+                        <div class="px-4 py-2.5 border-b border-[#e2e8f0] bg-slate-50">
+                            <p class="font-extrabold text-slate-900 truncate">
+                                {{ auth()->user()->name ?? 'User' }}
+                            </p>
+                            <p class="mt-0.5 text-xs text-slate-500 font-semibold capitalize">
+                                {{ auth()->user()->role ?? 'Karyawan' }}
+                            </p>
+                            <p class="mt-1 truncate font-mono text-[11px] font-bold text-slate-400">
+                                {{ auth()->user()->username ?? '-' }}
+                            </p>
+                        </div>
+
+                        <a
+                            href="{{ route('profile.edit') }}"
+                            class="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition font-bold {{ request()->routeIs('profile.*') ? 'bg-slate-100 text-slate-900' : '' }}"
+                        >
+                            <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15.75A3.75 3.75 0 1012 8.25a3.75 3.75 0 000 7.5zM19.5 12a7.5 7.5 0 01-.123 1.35l2.036 1.586-1.875 3.248-2.51-1.012a7.58 7.58 0 01-2.338 1.35L14.31 21h-4.62l-.38-2.478a7.58 7.58 0 01-2.338-1.35l-2.51 1.012-1.875-3.248 2.036-1.586A7.5 7.5 0 014.5 12c0-.46.041-.91.123-1.35L2.587 9.064l1.875-3.248 2.51 1.012A7.58 7.58 0 019.31 5.478L9.69 3h4.62l.38 2.478a7.58 7.58 0 012.338 1.35l2.51-1.012 1.875 3.248-2.036 1.586c.082.44.123.89.123 1.35z" />
+                            </svg>
+                            Pengaturan Profil
+                        </a>
+
+                        <div class="my-1 border-t border-[#e2e8f0]"></div>
 
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
