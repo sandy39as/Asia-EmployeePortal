@@ -215,16 +215,6 @@ class EmployeeCredentialController extends Controller
         $createdBy =
             $request->user()->id;
 
-        /*
-        |--------------------------------------------------------------------------
-        | TRANSACTION PER USER
-        |--------------------------------------------------------------------------
-        |
-        | Jangan bungkus seluruh mass reset ke satu transaction besar.
-        | Satu row yang terkunci tidak boleh menggagalkan seluruh batch.
-        |
-        */
-
         $employeesQuery
             ->orderBy('id')
             ->chunkById(
