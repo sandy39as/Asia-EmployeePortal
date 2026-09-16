@@ -93,10 +93,126 @@ class HrdEmployeeController extends Controller
                                 $leaveYear
                             ),
                 ])
-                ->orderBy(
-                    'nama'
+                ->get()
+                ->sort(
+                    function (
+                        Employee $a,
+                        Employee $b
+                    ) {
+                        /*
+                        |--------------------------------------------------------------------------
+                        | PRIORITAS URUTAN
+                        |--------------------------------------------------------------------------
+                        |
+                        | 1. Akun yang PERNAH mengalami perubahan berada di atas.
+                        |    Contoh:
+                        |    - first login
+                        |    - ganti ID Login
+                        |    - ganti password
+                        |    - ganti email/profile
+                        |    - reset akun
+                        |
+                        |    Indikatornya:
+                        |    users.updated_at > users.created_at
+                        |
+                        | 2. Sesama akun yang sudah berubah:
+                        |    perubahan PALING BARU berada paling atas.
+                        |
+                        | 3. Akun yang belum pernah berubah:
+                        |    urut alfabet berdasarkan nama.
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $aUser =
+                            $a->user;
+
+                        $bUser =
+                            $b->user;
+
+
+                        $aHasUpdate =
+                            $aUser
+                            &&
+                            $aUser->created_at
+                            &&
+                            $aUser->updated_at
+                            &&
+                            $aUser->updated_at->gt(
+                                $aUser->created_at
+                            );
+
+                        $bHasUpdate =
+                            $bUser
+                            &&
+                            $bUser->created_at
+                            &&
+                            $bUser->updated_at
+                            &&
+                            $bUser->updated_at->gt(
+                                $bUser->created_at
+                            );
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | YANG SUDAH ADA UPDATE SELALU DI ATAS
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (
+                            $aHasUpdate
+                            !==
+                            $bHasUpdate
+                        ) {
+                            return $aHasUpdate
+                                ? -1
+                                : 1;
+                        }
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | SESAMA YANG SUDAH UPDATE:
+                        | TERBARU DULU
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (
+                            $aHasUpdate
+                            &&
+                            $bHasUpdate
+                        ) {
+                            $compareUpdatedAt =
+                                $bUser
+                                    ->updated_at
+                                    ->getTimestamp()
+                                <=>
+                                $aUser
+                                    ->updated_at
+                                    ->getTimestamp();
+
+                            if (
+                                $compareUpdatedAt
+                                !== 0
+                            ) {
+                                return $compareUpdatedAt;
+                            }
+                        }
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | SISANYA URUT ABJAD
+                        |--------------------------------------------------------------------------
+                        */
+
+                        return strnatcasecmp(
+                            (string) $a->nama,
+                            (string) $b->nama
+                        );
+                    }
                 )
-                ->get();
+                ->values();
 
 
         /*
