@@ -151,6 +151,258 @@
             </form>
         </div>
 
+
+        {{-- ========================================================= --}}
+        {{-- PILIH KARYAWAN UNTUK RESET --}}
+        {{-- ========================================================= --}}
+        <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+            <div class="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                <div>
+                    <div class="text-sm font-extrabold text-slate-900">
+                        Pilih Karyawan
+                    </div>
+
+                    <div class="mt-0.5 text-xs text-slate-500">
+                        Centang karyawan yang ingin direset. Pilihan hanya berlaku pada halaman ini.
+                    </div>
+                </div>
+
+
+                <div class="flex flex-wrap items-center gap-2">
+
+                    <button
+                        type="button"
+                        id="toggleAllEmployees"
+                        class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-50"
+                    >
+                        Pilih Semua Halaman
+                    </button>
+
+                    <div class="text-xs font-bold text-slate-500">
+                        Dipilih:
+                        <span
+                            id="selectedEmployeeResetCount"
+                            class="font-black text-slate-900"
+                        >
+                            0
+                        </span>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <form
+                method="POST"
+                action="{{ route('master.employee-credentials.mass-reset') }}"
+                id="selectedEmployeeResetForm"
+            >
+                @csrf
+
+                <input
+                    type="hidden"
+                    name="search"
+                    value="{{ $filters['search'] ?? '' }}"
+                >
+
+                <input
+                    type="hidden"
+                    name="area"
+                    value="{{ $filters['area'] ?? '' }}"
+                >
+
+                <input
+                    type="hidden"
+                    name="category"
+                    value="{{ $filters['category'] ?? '' }}"
+                >
+
+
+                <div class="overflow-x-auto">
+
+                    <table class="min-w-full">
+
+                        <thead class="bg-slate-50">
+
+                            <tr class="text-left text-xs uppercase tracking-wider text-slate-500">
+
+                                <th class="w-12 px-5 py-4">
+                                    <input
+                                        type="checkbox"
+                                        id="employeeResetHeaderCheckbox"
+                                        class="h-4.5 w-4.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                    >
+                                </th>
+
+                                <th class="px-5 py-4 font-extrabold">
+                                    Karyawan
+                                </th>
+
+                                <th class="px-5 py-4 font-extrabold">
+                                    Area
+                                </th>
+
+                                <th class="px-5 py-4 font-extrabold">
+                                    Bagian
+                                </th>
+
+                                <th class="px-5 py-4 font-extrabold">
+                                    ID Login
+                                </th>
+
+                                <th class="px-5 py-4 font-extrabold">
+                                    Status Password
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody class="divide-y divide-slate-100">
+
+                            @forelse ($employees as $employee)
+
+                                @php
+                                    $employeeUser =
+                                        $employee->user;
+
+                                    $areaLabel =
+                                        match (
+                                            (int) $employee->source_device_id
+                                        ) {
+                                            1, 2 => '52',
+                                            3 => '27',
+                                            default => 'Lain',
+                                        };
+                                @endphp
+
+
+                                <tr class="hover:bg-slate-50/70">
+
+                                    <td class="px-5 py-4 align-top">
+
+                                        <input
+                                            type="checkbox"
+                                            name="employee_ids[]"
+                                            value="{{ $employee->id }}"
+                                            class="employeeResetCheckbox h-4.5 w-4.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                        >
+
+                                    </td>
+
+
+                                    <td class="px-5 py-4">
+
+                                        <div class="font-extrabold text-slate-900">
+                                            {{ $employee->nama }}
+                                        </div>
+
+                                        <div class="mt-0.5 text-xs font-bold text-slate-500">
+                                            {{ $employee->employee_code ?? '-' }}
+                                        </div>
+
+                                    </td>
+
+
+                                    <td class="px-5 py-4">
+
+                                        <span class="rounded-lg border border-cyan-200 bg-cyan-50 px-2 py-1 text-[10px] font-extrabold text-cyan-700">
+                                            AREA {{ $areaLabel }}
+                                        </span>
+
+                                    </td>
+
+
+                                    <td class="px-5 py-4">
+
+                                        <span class="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-extrabold text-blue-700">
+                                            {{ $employee->source_kategori_karyawan_name ?: '-' }}
+                                        </span>
+
+                                    </td>
+
+
+                                    <td class="px-5 py-4 font-mono text-sm font-extrabold text-slate-800">
+                                        {{ $employeeUser?->username ?? '-' }}
+                                    </td>
+
+
+                                    <td class="px-5 py-4">
+
+                                        @if ($employeeUser?->must_change_password)
+
+                                            <span class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold text-amber-700">
+                                                Wajib Ganti Password
+                                            </span>
+
+                                        @else
+
+                                            <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
+                                                Sudah Diganti
+                                            </span>
+
+                                        @endif
+
+                                    </td>
+
+                                </tr>
+
+                            @empty
+
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="px-5 py-12 text-center text-sm font-bold text-slate-500"
+                                    >
+                                        Tidak ada karyawan pada hasil filter ini.
+                                    </td>
+                                </tr>
+
+                            @endforelse
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <div class="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+                    <div class="text-xs text-slate-500">
+                        Reset checkbox hanya memproses karyawan yang dicentang.
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        id="resetSelectedEmployeesButton"
+                        disabled
+                        class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        Reset Karyawan Terpilih
+                    </button>
+
+                </div>
+
+            </form>
+
+
+            @if ($employees->hasPages())
+
+                <div class="border-t border-slate-200 p-4">
+                    {{ $employees->links() }}
+                </div>
+
+            @endif
+
+        </div>
+
+
         <div class="rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -420,6 +672,211 @@
                 confirmButton.textContent = 'Memproses...';
                 confirmButton.classList.add('opacity-70', 'cursor-not-allowed');
             });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | CHECKBOX RESET KARYAWAN
+            |--------------------------------------------------------------------------
+            */
+
+            const employeeResetCheckboxes =
+                Array.from(
+                    document.querySelectorAll(
+                        '.employeeResetCheckbox'
+                    )
+                );
+
+            const employeeResetHeaderCheckbox =
+                document.getElementById(
+                    'employeeResetHeaderCheckbox'
+                );
+
+            const toggleAllEmployees =
+                document.getElementById(
+                    'toggleAllEmployees'
+                );
+
+            const selectedEmployeeResetCount =
+                document.getElementById(
+                    'selectedEmployeeResetCount'
+                );
+
+            const resetSelectedEmployeesButton =
+                document.getElementById(
+                    'resetSelectedEmployeesButton'
+                );
+
+            const selectedEmployeeResetForm =
+                document.getElementById(
+                    'selectedEmployeeResetForm'
+                );
+
+
+            function refreshEmployeeResetSelection() {
+
+                const selectedCount =
+                    employeeResetCheckboxes
+                        .filter(
+                            checkbox =>
+                                checkbox.checked
+                        )
+                        .length;
+
+
+                if (selectedEmployeeResetCount) {
+                    selectedEmployeeResetCount.textContent =
+                        selectedCount;
+                }
+
+
+                if (resetSelectedEmployeesButton) {
+                    resetSelectedEmployeesButton.disabled =
+                        selectedCount === 0;
+                }
+
+
+                if (employeeResetHeaderCheckbox) {
+
+                    employeeResetHeaderCheckbox.checked =
+                        employeeResetCheckboxes.length > 0
+                        &&
+                        selectedCount
+                        ===
+                        employeeResetCheckboxes.length;
+
+                    employeeResetHeaderCheckbox.indeterminate =
+                        selectedCount > 0
+                        &&
+                        selectedCount
+                        <
+                        employeeResetCheckboxes.length;
+                }
+
+
+                if (toggleAllEmployees) {
+
+                    toggleAllEmployees.textContent =
+                        employeeResetCheckboxes.length > 0
+                        &&
+                        selectedCount
+                        ===
+                        employeeResetCheckboxes.length
+                            ? 'Hapus Semua Pilihan'
+                            : 'Pilih Semua Halaman';
+                }
+            }
+
+
+            employeeResetCheckboxes.forEach(
+                function (checkbox) {
+
+                    checkbox.addEventListener(
+                        'change',
+                        refreshEmployeeResetSelection
+                    );
+                }
+            );
+
+
+            employeeResetHeaderCheckbox
+                ?.addEventListener(
+                    'change',
+                    function () {
+
+                        employeeResetCheckboxes.forEach(
+                            checkbox => {
+                                checkbox.checked =
+                                    employeeResetHeaderCheckbox.checked;
+                            }
+                        );
+
+                        refreshEmployeeResetSelection();
+                    }
+                );
+
+
+            toggleAllEmployees
+                ?.addEventListener(
+                    'click',
+                    function () {
+
+                        const shouldCheck =
+                            employeeResetCheckboxes.some(
+                                checkbox =>
+                                    ! checkbox.checked
+                            );
+
+
+                        employeeResetCheckboxes.forEach(
+                            checkbox => {
+                                checkbox.checked =
+                                    shouldCheck;
+                            }
+                        );
+
+
+                        refreshEmployeeResetSelection();
+                    }
+                );
+
+
+            selectedEmployeeResetForm
+                ?.addEventListener(
+                    'submit',
+                    function (event) {
+
+                        const selectedCount =
+                            employeeResetCheckboxes
+                                .filter(
+                                    checkbox =>
+                                        checkbox.checked
+                                )
+                                .length;
+
+
+                        if (selectedCount === 0) {
+
+                            event.preventDefault();
+
+                            alert(
+                                'Pilih minimal satu karyawan.'
+                            );
+
+                            return;
+                        }
+
+
+                        const confirmed =
+                            confirm(
+                                'Reset password '
+                                + selectedCount
+                                + ' karyawan terpilih?'
+                            );
+
+
+                        if (! confirmed) {
+
+                            event.preventDefault();
+
+                            return;
+                        }
+
+
+                        if (resetSelectedEmployeesButton) {
+
+                            resetSelectedEmployeesButton.disabled =
+                                true;
+
+                            resetSelectedEmployeesButton.textContent =
+                                'Memproses...';
+                        }
+                    }
+                );
+
+
+            refreshEmployeeResetSelection();
+
 
             document.querySelectorAll('.copyCredentialButton').forEach(function (button) {
                 button.addEventListener('click', async function () {

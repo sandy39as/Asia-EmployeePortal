@@ -102,6 +102,26 @@ class EmployeeCredentialController extends Controller
             'category' => ['nullable', 'string', 'max:255'],
             'search' => ['nullable', 'string', 'max:255'],
             'allow_all' => ['nullable', 'boolean'],
+
+            /*
+            |--------------------------------------------------------------------------
+            | RESET KARYAWAN TERPILIH
+            |--------------------------------------------------------------------------
+            */
+            'employee_ids' => [
+                'nullable',
+                'array',
+                'min:1',
+            ],
+            'employee_ids.*' => [
+                'integer',
+                Rule::exists('employees', 'id')->where(
+                    fn ($query) => $query->where(
+                        'is_active',
+                        true
+                    )
+                ),
+            ],
         ]);
 
         $area = trim((string) ($validated['area'] ?? ''));
@@ -109,8 +129,22 @@ class EmployeeCredentialController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
         $allowAll = (bool) ($validated['allow_all'] ?? false);
 
+        $selectedEmployeeIds = collect(
+            $validated['employee_ids']
+            ?? []
+        )
+            ->map(
+                fn ($id) => (int) $id
+            )
+            ->unique()
+            ->values();
+
+        $resetSelectedOnly =
+            $selectedEmployeeIds->isNotEmpty();
+
         if (
-            $area === ''
+            ! $resetSelectedOnly
+            && $area === ''
             && $category === ''
             && $search === ''
             && ! $allowAll
@@ -134,10 +168,31 @@ class EmployeeCredentialController extends Controller
             ->where('is_active', true)
             ->whereHas('user');
 
-        $this->applyEmployeeFilters(
-            $employeesQuery,
-            $filters
-        );
+        if ($resetSelectedOnly) {
+            /*
+            |--------------------------------------------------------------------------
+            | MODE CHECKBOX
+            |--------------------------------------------------------------------------
+            |
+            | Jika ada employee_ids[], HANYA karyawan yang dicentang yang diproses.
+            | Filter tidak menambah karyawan lain.
+            |
+            */
+            $employeesQuery->whereIn(
+                'id',
+                $selectedEmployeeIds->all()
+            );
+        } else {
+            /*
+            |--------------------------------------------------------------------------
+            | MODE FILTER MASSAL
+            |--------------------------------------------------------------------------
+            */
+            $this->applyEmployeeFilters(
+                $employeesQuery,
+                $filters
+            );
+        }
 
         $employees = $employeesQuery->get();
 
@@ -190,6 +245,11 @@ class EmployeeCredentialController extends Controller
             }
         });
 
+        $modeLabel =
+            $resetSelectedOnly
+                ? 'karyawan terpilih'
+                : 'hasil filter';
+
         return redirect()
             ->route(
                 'master.employee-credentials.index',
@@ -201,7 +261,9 @@ class EmployeeCredentialController extends Controller
             ->with(
                 'success',
                 $count
-                . ' akun berhasil dibuatkan password sementara. '
+                . ' akun '
+                . $modeLabel
+                . ' berhasil dibuatkan password sementara. '
                 . 'Password wajib diganti saat login.'
             );
     }
