@@ -7,7 +7,7 @@
             </h1>
 
             <p class="text-sm font-medium text-slate-500">
-                Kelola ID Login, email, dan keamanan akun Anda.
+                Kelola ID Login, email, dan keamanan akun Anda. Nama karyawan mengikuti data master.
             </p>
         </div>
     </x-slot>
@@ -57,30 +57,36 @@
                 @method('PATCH')
 
 
-                {{-- NAME --}}
+                {{-- NAME - READ ONLY --}}
                 <div>
 
                     <label
-                        for="name"
+                        for="profileNameReadonly"
                         class="mb-1.5 block text-xs font-extrabold uppercase tracking-wider text-slate-500"
                     >
-                        Nama Akun
+                        Nama Karyawan
                     </label>
 
-                    <input
-                        id="name"
-                        name="name"
-                        type="text"
-                        value="{{ old('name', $user->name) }}"
-                        required
-                        autocomplete="name"
-                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 focus:border-slate-500 focus:outline-none"
-                    >
+                    <div class="relative">
 
-                    <x-input-error
-                        :messages="$errors->get('name')"
-                        class="mt-2 text-xs font-bold text-rose-600"
-                    />
+                        <input
+                            id="profileNameReadonly"
+                            type="text"
+                            value="{{ $user->name }}"
+                            readonly
+                            tabindex="-1"
+                            class="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 pr-28 text-sm font-extrabold text-slate-600 outline-none"
+                        >
+
+                        <span class="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                            Terkunci
+                        </span>
+
+                    </div>
+
+                    <p class="mt-2 text-xs leading-5 text-slate-500">
+                        Nama mengikuti data master karyawan/FaceLog dan tidak dapat diubah dari halaman profil.
+                    </p>
 
                 </div>
 

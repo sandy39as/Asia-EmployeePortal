@@ -9,17 +9,9 @@ use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
 {
-    /**
-     * @return array<string, ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
 
             'username' => [
                 'required',
@@ -54,9 +46,6 @@ class ProfileUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' =>
-                'Nama wajib diisi.',
-
             'username.required' =>
                 'ID Login wajib diisi.',
 

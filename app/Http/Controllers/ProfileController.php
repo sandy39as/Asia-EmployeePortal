@@ -25,13 +25,6 @@ class ProfileController extends Controller
         );
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | CEK KETERSEDIAAN ID LOGIN
-    |--------------------------------------------------------------------------
-    */
-
     public function checkUsername(
         Request $request
     ): JsonResponse {
@@ -70,12 +63,6 @@ class ProfileController extends Controller
             );
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | ID LOGIN SAAT INI
-        |--------------------------------------------------------------------------
-        */
-
         if (
             strcasecmp(
                 $username,
@@ -95,12 +82,6 @@ class ProfileController extends Controller
             ]);
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CEK AKUN LAIN
-        |--------------------------------------------------------------------------
-        */
 
         $exists =
             User::query()
@@ -144,22 +125,20 @@ class ProfileController extends Controller
         ]);
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | UPDATE PROFILE
-    |--------------------------------------------------------------------------
-    */
-
     public function update(
         ProfileUpdateRequest $request
     ): RedirectResponse {
         $user =
             $request->user();
 
-        $user->fill(
-            $request->validated()
-        );
+        $validated =
+            $request->validated();
+
+        $user->username =
+            $validated['username'];
+
+        $user->email =
+            $validated['email'];
 
 
         if (
@@ -172,15 +151,6 @@ class ProfileController extends Controller
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | PROFILE CHANGE BUKAN FIRST LOGIN
-        |--------------------------------------------------------------------------
-        |
-        | Kalau user mengganti username dari halaman profile,
-        | perubahan dianggap valid dan tidak perlu dipaksa first-change lagi.
-        |
-        */
         if (
             $user->isDirty(
                 'username'
@@ -201,13 +171,6 @@ class ProfileController extends Controller
             'profile-updated'
         );
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | DELETE ACCOUNT
-    |--------------------------------------------------------------------------
-    */
 
     public function destroy(
         Request $request
