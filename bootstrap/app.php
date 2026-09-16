@@ -1,13 +1,14 @@
 <?php
 
 use App\Http\Middleware\EnsureHrd;
+use App\Http\Middleware\EnsureKabag;
+use App\Http\Middleware\EnsureLoginIdentityChanged;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsurePortalMasterAdmin;
 use App\Http\Middleware\VerifyFaceLogToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use App\Http\Middleware\EnsureKabag;
 
 return Application::configure(
     basePath: dirname(__DIR__)
@@ -20,8 +21,23 @@ return Application::configure(
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
+        /*
+        |--------------------------------------------------------------------------
+        | FIRST LOGIN FLOW - GLOBAL WEB
+        |--------------------------------------------------------------------------
+        |
+        | Urutan WAJIB:
+        |
+        | 1. EnsureLoginIdentityChanged
+        | 2. EnsurePasswordChanged
+        |
+        | Jadi:
+        | Login awal -> Ganti ID Login -> Ganti Password -> Portal
+        |
+        */
         $middleware->web(
             append: [
+                EnsureLoginIdentityChanged::class,
                 EnsurePasswordChanged::class,
             ]
         );
@@ -31,6 +47,12 @@ return Application::configure(
             'kabag' => EnsureKabag::class,
             'facelog.token' => VerifyFaceLogToken::class,
             'portal.master-admin' => EnsurePortalMasterAdmin::class,
+
+            /*
+            | Alias ini tetap boleh disimpan kalau suatu saat
+            | dibutuhkan secara eksplisit di route tertentu.
+            */
+            'login-id.changed' => EnsureLoginIdentityChanged::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

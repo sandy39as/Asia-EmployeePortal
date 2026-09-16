@@ -101,6 +101,14 @@ class EmployeeCredentialController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'allow_all' => ['nullable', 'boolean'],
 
+            'reset_mode' => [
+                'required',
+                Rule::in([
+                    'password_only',
+                    'login_and_password',
+                ]),
+            ],
+
             /*
             |--------------------------------------------------------------------------
             | RESET KARYAWAN TERPILIH
@@ -126,6 +134,9 @@ class EmployeeCredentialController extends Controller
         $category = trim((string) ($validated['category'] ?? ''));
         $search = trim((string) ($validated['search'] ?? ''));
         $allowAll = (bool) ($validated['allow_all'] ?? false);
+
+        $resetMode =
+            $validated['reset_mode'];
 
         $selectedEmployeeIds = collect(
             $validated['employee_ids']
@@ -206,6 +217,7 @@ class EmployeeCredentialController extends Controller
         DB::transaction(function () use (
             $employees,
             $request,
+            $resetMode,
             &$count
         ) {
             foreach ($employees as $employee) {
@@ -220,10 +232,40 @@ class EmployeeCredentialController extends Controller
                     999999
                 );
 
-                $user->forceFill([
-                    'password' => Hash::make($plainPassword),
-                    'must_change_password' => true,
-                ])->save();
+                $userData = [
+                    'password' =>
+                        Hash::make(
+                            $plainPassword
+                        ),
+
+                    'must_change_password' =>
+                        true,
+                ];
+
+                if (
+                    $resetMode
+                    ===
+                    'login_and_password'
+                ) {
+                    /*
+                    |--------------------------------------------------------------------------
+                    | RESET ID LOGIN KE ID KARYAWAN
+                    |--------------------------------------------------------------------------
+                    |
+                    | Setelah login menggunakan employee_code, user wajib membuat
+                    | ID Login / email baru lagi.
+                    |
+                    */
+                    $userData['username'] =
+                        $employee->employee_code;
+
+                    $userData['must_change_username'] =
+                        true;
+                }
+
+                $user->forceFill(
+                    $userData
+                )->save();
 
                 EmployeeTempCredential::updateOrCreate(
                     [
@@ -248,6 +290,13 @@ class EmployeeCredentialController extends Controller
                 ? 'karyawan terpilih'
                 : 'hasil filter';
 
+        $resetLabel =
+            $resetMode
+            ===
+            'login_and_password'
+                ? 'ID Login + password'
+                : 'password';
+
         return redirect()
             ->route(
                 'master.employee-credentials.index',
@@ -261,8 +310,9 @@ class EmployeeCredentialController extends Controller
                 $count
                 . ' akun '
                 . $modeLabel
-                . ' berhasil dibuatkan password sementara. '
-                . 'Password wajib diganti saat login.'
+                . ' berhasil direset '
+                . $resetLabel
+                . '. Password wajib diganti saat login.'
             );
     }
 
@@ -271,6 +321,21 @@ class EmployeeCredentialController extends Controller
         Employee $employee
     ) {
         $this->authorizeMaster($request);
+
+        $validated =
+            $request->validate([
+                'reset_mode' => [
+                    'nullable',
+                    Rule::in([
+                        'password_only',
+                        'login_and_password',
+                    ]),
+                ],
+            ]);
+
+        $resetMode =
+            $validated['reset_mode']
+            ?? 'password_only';
 
         $employee->load('user');
 
@@ -288,12 +353,37 @@ class EmployeeCredentialController extends Controller
         DB::transaction(function () use (
             $employee,
             $request,
-            $plainPassword
+            $plainPassword,
+            $resetMode
         ) {
-            $employee->user->forceFill([
-                'password' => Hash::make($plainPassword),
-                'must_change_password' => true,
-            ])->save();
+            $userData = [
+                'password' =>
+                    Hash::make(
+                        $plainPassword
+                    ),
+
+                'must_change_password' =>
+                    true,
+            ];
+
+            if (
+                $resetMode
+                ===
+                'login_and_password'
+            ) {
+                $userData['username'] =
+                    $employee->employee_code;
+
+                $userData['must_change_username'] =
+                    true;
+            }
+
+            $employee
+                ->user
+                ->forceFill(
+                    $userData
+                )
+                ->save();
 
             EmployeeTempCredential::updateOrCreate(
                 [
@@ -315,7 +405,16 @@ class EmployeeCredentialController extends Controller
                 'success' => true,
                 'message' => 'Password berhasil direset.',
                 'data' => [
-                    'password' => $plainPassword,
+                    'username' =>
+                        $employee
+                            ->user
+                            ->username,
+
+                    'password' =>
+                        $plainPassword,
+
+                    'reset_mode' =>
+                        $resetMode,
                 ],
             ]);
         }

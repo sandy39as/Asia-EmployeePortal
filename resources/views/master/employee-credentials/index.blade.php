@@ -341,6 +341,13 @@
                                                 @endif
                                             </div>
 
+                                            <div class="mt-1 text-[11px] font-semibold text-slate-500">
+                                                Login aktif:
+                                                <span class="font-mono font-extrabold text-slate-800">
+                                                    {{ $employeeUser?->username ?? '-' }}
+                                                </span>
+                                            </div>
+
                                         </td>
 
 
@@ -364,19 +371,38 @@
 
                                         <td class="px-5 py-4">
 
-                                            @if ($employeeUser?->must_change_password)
+                                            <div class="flex flex-col gap-1">
 
-                                                <span class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold text-amber-700">
-                                                    Wajib Ganti
-                                                </span>
+                                                @if ($employeeUser?->must_change_username)
 
-                                            @else
+                                                    <span class="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-extrabold text-violet-700">
+                                                        Wajib Ganti ID
+                                                    </span>
 
-                                                <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
-                                                    Sudah Diganti
-                                                </span>
+                                                @else
 
-                                            @endif
+                                                    <span class="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-[10px] font-extrabold text-sky-700">
+                                                        ID Aktif
+                                                    </span>
+
+                                                @endif
+
+
+                                                @if ($employeeUser?->must_change_password)
+
+                                                    <span class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold text-amber-700">
+                                                        Wajib Ganti PW
+                                                    </span>
+
+                                                @else
+
+                                                    <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-extrabold text-emerald-700">
+                                                        Password Aktif
+                                                    </span>
+
+                                                @endif
+
+                                            </div>
 
                                         </td>
 
@@ -404,8 +430,35 @@
 
                     <div class="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
 
-                        <div class="text-xs text-slate-500">
-                            Hanya karyawan yang dicentang yang akan direset.
+                        <div class="min-w-0">
+                            <div class="text-xs text-slate-500">
+                                Hanya karyawan yang dicentang yang akan direset.
+                            </div>
+
+                            <div class="mt-2 flex flex-wrap gap-3 text-xs font-bold text-slate-700">
+
+                                <label class="inline-flex cursor-pointer items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="reset_mode"
+                                        value="password_only"
+                                        checked
+                                        class="border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    >
+                                    Password saja
+                                </label>
+
+                                <label class="inline-flex cursor-pointer items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="reset_mode"
+                                        value="login_and_password"
+                                        class="border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    >
+                                    ID Login + Password
+                                </label>
+
+                            </div>
                         </div>
 
 
@@ -437,7 +490,7 @@
                         Akan memproses {{ number_format($summary['matching_employees'] ?? 0) }} akun sesuai filter.
                     </div>
                     <p class="mt-1 text-xs leading-5 text-amber-700">
-                        Setiap akun mendapat password 6 digit baru dan wajib mengganti password saat login.
+                        Pilih apakah hanya password atau sekaligus ID Login yang dikembalikan ke ID Karyawan.
                     </p>
                 </div>
 
@@ -602,6 +655,58 @@
                 <input type="hidden" name="search" value="{{ $filters['search'] ?? '' }}">
                 <input type="hidden" name="area" value="{{ $filters['area'] ?? '' }}">
                 <input type="hidden" name="category" value="{{ $filters['category'] ?? '' }}">
+
+
+                <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+
+                    <div class="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                        Yang Akan Direset
+                    </div>
+
+                    <div class="mt-3 space-y-2">
+
+                        <label class="flex cursor-pointer items-start gap-3">
+                            <input
+                                type="radio"
+                                name="reset_mode"
+                                value="password_only"
+                                checked
+                                class="mt-0.5 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            >
+
+                            <span>
+                                <span class="block text-sm font-extrabold text-slate-800">
+                                    Password saja
+                                </span>
+                                <span class="block text-xs text-slate-500">
+                                    ID Login aktif tetap dipertahankan.
+                                </span>
+                            </span>
+                        </label>
+
+
+                        <label class="flex cursor-pointer items-start gap-3">
+                            <input
+                                type="radio"
+                                name="reset_mode"
+                                value="login_and_password"
+                                class="mt-0.5 border-slate-300 text-blue-600 focus:ring-blue-500"
+                            >
+
+                            <span>
+                                <span class="block text-sm font-extrabold text-slate-800">
+                                    ID Login + Password
+                                </span>
+                                <span class="block text-xs text-slate-500">
+                                    ID Login dikembalikan ke ID Karyawan dan user wajib membuat ID Login baru lagi.
+                                </span>
+                            </span>
+                        </label>
+
+                    </div>
+
+                </div>
+
 
                 @if (
                     ($filters['search'] ?? '') === ''

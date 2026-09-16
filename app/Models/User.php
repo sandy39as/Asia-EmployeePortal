@@ -19,6 +19,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'must_change_username',
         'must_change_password',
         'is_active',
         'email_verified_at',
@@ -34,6 +35,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_username' => 'boolean',
             'must_change_password' => 'boolean',
             'is_active' => 'boolean',
         ];

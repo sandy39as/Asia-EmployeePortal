@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FirstLoginIdController;
 use App\Http\Controllers\FirstPasswordController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\ProfileController;
@@ -73,6 +74,37 @@ Route::get(
             );
     }
 );
+
+
+/*
+|--------------------------------------------------------------------------
+| FIRST LOGIN ID
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->group(function () {
+
+    Route::get(
+        '/login-id/first-change',
+        [
+            FirstLoginIdController::class,
+            'edit',
+        ]
+    )->name(
+        'login-id.first.edit'
+    );
+
+    Route::post(
+        '/login-id/first-change',
+        [
+            FirstLoginIdController::class,
+            'update',
+        ]
+    )->name(
+        'login-id.first.update'
+    );
+
+});
 
 
 /*
