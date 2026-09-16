@@ -9,6 +9,7 @@ use App\Http\Controllers\Hrd\HrdLeaveRequestController;
 
 use App\Http\Controllers\Kabag\KabagLeaveRequestController;
 
+use App\Http\Controllers\Master\EmployeeCredentialController;
 use App\Http\Controllers\Master\KabagController;
 use App\Http\Controllers\Master\KabagMappingController;
 use App\Http\Controllers\Master\PermissionTypeController;
@@ -403,6 +404,44 @@ Route::middleware([
                 ->except(
                     'show'
                 );
+
+            /*
+            |--------------------------------------------------------------------------
+            | EMPLOYEE TEMP CREDENTIALS
+            |-------------------------------------------------------------------------
+            */
+
+            Route::get(
+                '/employee-credentials',
+                [
+                    \App\Http\Controllers\Master\EmployeeCredentialController::class,
+                    'index',
+                ]
+            )->name('employee-credentials.index');
+
+            Route::post(
+                '/employee-credentials/mass-reset',
+                [
+                    \App\Http\Controllers\Master\EmployeeCredentialController::class,
+                    'massReset',
+                ]
+            )->name('employee-credentials.mass-reset');
+
+            Route::post(
+                '/employee-credentials/{employee}/reset',
+                [
+                    \App\Http\Controllers\Master\EmployeeCredentialController::class,
+                    'resetOne',
+                ]
+            )->name('employee-credentials.reset-one');
+
+            Route::get(
+                '/employee-credentials/export',
+                [
+                    \App\Http\Controllers\Master\EmployeeCredentialController::class,
+                    'export',
+                ]
+            )->name('employee-credentials.export');
 
 
             /*

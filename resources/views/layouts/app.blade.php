@@ -191,6 +191,29 @@
                             </svg>
                             <span>Jenis Izin</span>
                         </a>
+
+                        <a
+                            href="{{ route('master.employee-credentials.index') }}"
+                            class="{{ $baseLinkClass }} {{ request()->routeIs('master.employee-credentials.*') ? $activeLinkClass : $inactiveLinkClass }}"
+                        >
+                            <svg
+                                class="h-5 w-5 {{ request()->routeIs('master.employee-credentials.*') ? 'text-slate-900' : 'text-slate-500' }}"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M15 7a4 4 0 11-7.874 1H3m12-1h6m-3-3v6M5 21a7 7 0 0114 0"
+                                />
+                            </svg>
+
+                            <span>Kredensial Karyawan</span>
+                        </a>
+
+
                     @endif
 
                 {{-- ========================================================= --}}
