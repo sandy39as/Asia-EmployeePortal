@@ -93,81 +93,10 @@ class HrdEmployeeController extends Controller
                                 $leaveYear
                             ),
                 ])
-                ->when(
-                    $search !== '',
-                    function (
-                        Builder $query
-                    ) use (
-                        $search
-                    ) {
-                        $query->where(
-                            function (
-                                Builder $q
-                            ) use (
-                                $search
-                            ) {
-                                $q
-                                    ->where(
-                                        'nama',
-                                        'like',
-                                        "%{$search}%"
-                                    )
-                                    ->orWhere(
-                                        'employee_code',
-                                        'like',
-                                        "%{$search}%"
-                                    )
-                                    ->orWhere(
-                                        'jabatan',
-                                        'like',
-                                        "%{$search}%"
-                                    )
-                                    ->orWhereHas(
-                                        'user',
-                                        function (
-                                            Builder $userQuery
-                                        ) use (
-                                            $search
-                                        ) {
-                                            $userQuery
-                                                ->where(
-                                                    'username',
-                                                    'like',
-                                                    "%{$search}%"
-                                                );
-                                        }
-                                    );
-                            }
-                        );
-                    }
-                )
-                ->when(
-                    $status === 'active',
-                    fn (
-                        Builder $query
-                    ) =>
-                        $query->where(
-                            'is_active',
-                            true
-                        )
-                )
-                ->when(
-                    $status === 'inactive',
-                    fn (
-                        Builder $query
-                    ) =>
-                        $query->where(
-                            'is_active',
-                            false
-                        )
-                )
                 ->orderBy(
                     'nama'
                 )
-                ->paginate(
-                    10
-                )
-                ->withQueryString();
+                ->get();
 
 
         /*
@@ -177,7 +106,7 @@ class HrdEmployeeController extends Controller
         */
 
         foreach (
-            $employees->getCollection()
+            $employees
             as $employee
         ) {
             if (

@@ -15,74 +15,107 @@
             </div>
         @endif
 
-        {{-- FILTER & SUMMARY PILLS --}}
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        {{-- ========================================================= --}}
+        {{-- LIVE FILTER + SUMMARY BADGES --}}
+        {{-- ========================================================= --}}
+        <div class="space-y-3">
+
+            {{-- CLICKABLE BADGES --}}
             <div class="flex flex-wrap items-center gap-2">
-                <span class="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-xs">
-                    Total: <strong class="font-extrabold text-slate-900">{{ number_format($summary['total'] ?? 0) }}</strong>
-                </span>
 
-                <a href="{{ route('hrd.employees.index', ['status' => 'active', 'search' => $search, 'leave_year' => $leaveYear]) }}" 
-                   class="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 {{ ($status ?? '') === 'active' ? 'ring-2 ring-emerald-500' : '' }}">
-                    Aktif: {{ number_format($summary['active'] ?? 0) }}
-                </a>
-
-                <a href="{{ route('hrd.employees.index', ['status' => 'inactive', 'search' => $search, 'leave_year' => $leaveYear]) }}" 
-                   class="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 {{ ($status ?? '') === 'inactive' ? 'ring-2 ring-slate-400' : '' }}">
-                    Nonaktif: {{ number_format($summary['inactive'] ?? 0) }}
-                </a>
-
-                <span class="rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-sm font-bold text-violet-800">
-                    Wajib Ganti ID: {{ number_format($summary['must_change_username'] ?? 0) }}
-                </span>
-
-                <span class="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-bold text-amber-800">
-                    Wajib Ganti PW: {{ number_format($summary['must_change_password'] ?? 0) }}
-                </span>
-
-                <span class="rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2 text-sm font-bold text-sky-800">
-                    ASIA: {{ number_format($summary['asia'] ?? 0) }}
-                </span>
-
-                <span class="rounded-xl border border-orange-200 bg-orange-50 px-3.5 py-2 text-sm font-bold text-orange-800">
-                    Outsourcing: {{ number_format($summary['outsourcing'] ?? 0) }}
-                </span>
-            </div>
-
-            {{-- FORM PENCARIAN --}}
-            <form method="GET" action="{{ route('hrd.employees.index') }}" class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-                <input type="text"
-                       name="search"
-                       value="{{ $search ?? '' }}"
-                       placeholder="Cari nama / kode ID..."
-                       class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none sm:w-60">
-
-                <select name="leave_year"
-                        class="w-32 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:border-slate-500 focus:outline-none"
-                        onchange="this.form.submit()">
-                    @for ($year = now()->year; $year >= now()->year - 3; $year--)
-                        <option value="{{ $year }}" @selected(($leaveYear ?? now()->year) == $year)>
-                            {{ $year }}
-                        </option>
-                    @endfor
-                </select>
-
-                <select name="status" class="w-36 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:border-slate-500 focus:outline-none">
-                    <option value="">Semua Status</option>
-                    <option value="active" @selected(($status ?? '') === 'active')>Aktif</option>
-                    <option value="inactive" @selected(($status ?? '') === 'inactive')>Nonaktif</option>
-                </select>
-
-                <button type="submit" class="rounded-xl bg-slate-900 px-5 py-2 text-sm font-extrabold text-white transition hover:bg-black">
-                    Cari
+                <button type="button"
+                        class="employeeSummaryBadge employeeSummaryBadgeActive rounded-xl border border-slate-300 bg-slate-900 px-3.5 py-2 text-sm font-bold text-white transition"
+                        data-filter="all">
+                    Total:
+                    <strong>{{ number_format($summary['total'] ?? 0) }}</strong>
                 </button>
 
-                @if(($search ?? '') !== '' || ($status ?? '') !== '')
-                    <a href="{{ route('hrd.employees.index', ['leave_year' => $leaveYear]) }}" class="flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50" title="Reset Filter">
+                <button type="button"
+                        class="employeeSummaryBadge rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100"
+                        data-filter="active">
+                    Aktif:
+                    <strong>{{ number_format($summary['active'] ?? 0) }}</strong>
+                </button>
+
+                <button type="button"
+                        class="employeeSummaryBadge rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                        data-filter="inactive">
+                    Nonaktif:
+                    <strong>{{ number_format($summary['inactive'] ?? 0) }}</strong>
+                </button>
+
+                <button type="button"
+                        class="employeeSummaryBadge rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-sm font-bold text-violet-800 transition hover:bg-violet-100"
+                        data-filter="must-change-username">
+                    Wajib Ganti ID:
+                    <strong>{{ number_format($summary['must_change_username'] ?? 0) }}</strong>
+                </button>
+
+                <button type="button"
+                        class="employeeSummaryBadge rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-bold text-amber-800 transition hover:bg-amber-100"
+                        data-filter="must-change-password">
+                    Wajib Ganti PW:
+                    <strong>{{ number_format($summary['must_change_password'] ?? 0) }}</strong>
+                </button>
+
+                <button type="button"
+                        class="employeeSummaryBadge rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2 text-sm font-bold text-sky-800 transition hover:bg-sky-100"
+                        data-filter="asia">
+                    ASIA:
+                    <strong>{{ number_format($summary['asia'] ?? 0) }}</strong>
+                </button>
+
+                <button type="button"
+                        class="employeeSummaryBadge rounded-xl border border-orange-200 bg-orange-50 px-3.5 py-2 text-sm font-bold text-orange-800 transition hover:bg-orange-100"
+                        data-filter="outsourcing">
+                    Outsourcing:
+                    <strong>{{ number_format($summary['outsourcing'] ?? 0) }}</strong>
+                </button>
+
+            </div>
+
+
+            {{-- LIVE SEARCH + TAHUN CUTI --}}
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
+                <div class="relative w-full sm:max-w-md">
+                    <input type="text"
+                           id="employeeLiveSearch"
+                           placeholder="Live search nama / ID / login / jabatan / kategori..."
+                           autocomplete="off"
+                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:outline-none">
+
+                    <button type="button"
+                            id="clearEmployeeLiveSearch"
+                            class="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-black text-slate-400 hover:bg-slate-100 hover:text-slate-700">
                         ✕
-                    </a>
-                @endif
-            </form>
+                    </button>
+                </div>
+
+
+                <div class="flex items-center gap-2">
+                    <div class="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-500">
+                        Tampil:
+                        <span id="employeeVisibleCount" class="font-black text-slate-900">
+                            {{ $employees->count() }}
+                        </span>
+                    </div>
+
+                    <form method="GET" action="{{ route('hrd.employees.index') }}">
+                        <select name="leave_year"
+                                class="w-28 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:border-slate-500 focus:outline-none"
+                                onchange="this.form.submit()">
+                            @for ($year = now()->year; $year >= now()->year - 3; $year--)
+                                <option value="{{ $year }}" @selected(($leaveYear ?? now()->year) == $year)>
+                                    {{ $year }}
+                                </option>
+                            @endfor
+                        </select>
+                    </form>
+                </div>
+
+            </div>
+
         </div>
 
         {{-- MOBILE VIEW --}}
@@ -95,7 +128,18 @@
                     $annualBalance = $employee->employment_group === 'asia' ? $employee->leaveBalances->first() : null;
                 @endphp
 
-                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-slate-300 space-y-3">
+                <div class="employeeLiveItem rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-slate-300 space-y-3"
+                     data-active="{{ $employee->is_active ? '1' : '0' }}"
+                     data-must-change-username="{{ $mustChangeUsername ? '1' : '0' }}"
+                     data-must-change-password="{{ $mustChangePassword ? '1' : '0' }}"
+                     data-group="{{ $employee->employment_group ?? '' }}"
+                     data-search="{{ strtolower(trim(
+                         ($employee->nama ?? '') . ' ' .
+                         ($employee->employee_code ?? '') . ' ' .
+                         ($employee->jabatan ?? '') . ' ' .
+                         ($employee->source_kategori_karyawan_name ?? '') . ' ' .
+                         ($employee->user?->username ?? '')
+                     )) }}">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <h3 class="text-base font-extrabold text-slate-900 leading-snug">{{ $employee->nama }}</h3>
@@ -185,9 +229,9 @@
         </div>
 
         {{-- DESKTOP TABLE VIEW --}}
-        <div class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs lg:block">
+        <div class="hidden max-h-[68vh] overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xs lg:block">
             <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-xs font-extrabold uppercase tracking-wider text-slate-600">
+                <thead class="sticky top-0 z-10 bg-slate-50 text-xs font-extrabold uppercase tracking-wider text-slate-600 shadow-sm">
                     <tr>
                         <th class="px-5 py-4 text-left">Karyawan</th>
                         <th class="px-5 py-4 text-left">Jabatan</th>
@@ -207,7 +251,18 @@
                             $mustChangePassword = (bool) ($employee->user?->must_change_password ?? false);
                             $annualBalance = $employee->employment_group === 'asia' ? $employee->leaveBalances->first() : null;
                         @endphp
-                        <tr class="transition hover:bg-slate-50/70">
+                        <tr class="employeeLiveItem transition hover:bg-slate-50/70"
+                            data-active="{{ $employee->is_active ? '1' : '0' }}"
+                            data-must-change-username="{{ $mustChangeUsername ? '1' : '0' }}"
+                            data-must-change-password="{{ $mustChangePassword ? '1' : '0' }}"
+                            data-group="{{ $employee->employment_group ?? '' }}"
+                            data-search="{{ strtolower(trim(
+                                ($employee->nama ?? '') . ' ' .
+                                ($employee->employee_code ?? '') . ' ' .
+                                ($employee->jabatan ?? '') . ' ' .
+                                ($employee->source_kategori_karyawan_name ?? '') . ' ' .
+                                ($employee->user?->username ?? '')
+                            )) }}">
                             <td class="px-5 py-4">
                                 <div class="font-extrabold text-slate-900 text-base leading-snug">{{ $employee->nama }}</div>
                                 <div class="font-mono text-xs font-bold text-slate-400 mt-0.5">{{ $employee->employee_code }}</div>
@@ -296,59 +351,6 @@
             </table>
         </div>
 
-        {{-- ========================================================= --}}
-        {{-- PAGINATION JELAS & LEGA --}}
-        {{-- ========================================================= --}}
-        @if ($employees->hasPages())
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    {{-- Info Halaman --}}
-                    <div class="text-sm font-semibold text-slate-600">
-                        Menampilkan <span class="font-extrabold text-slate-900">{{ $employees->firstItem() }}</span>
-                        sampai <span class="font-extrabold text-slate-900">{{ $employees->lastItem() }}</span>
-                        dari <span class="font-black text-slate-900">{{ $employees->total() }}</span> karyawan
-                    </div>
-
-                    {{-- Tombol Navigasi Pagination --}}
-                    <div class="flex items-center gap-1.5 overflow-x-auto">
-                        {{-- Tombol Previous --}}
-                        @if ($employees->onFirstPage())
-                            <span class="inline-flex cursor-not-allowed items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-bold text-slate-400 opacity-60">
-                                &laquo; Prev
-                            </span>
-                        @else
-                            <a href="{{ $employees->previousPageUrl() }}" class="inline-flex items-center rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-extrabold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
-                                &laquo; Prev
-                            </a>
-                        @endif
-
-                        {{-- Deretan Nomor Halaman --}}
-                        @foreach ($employees->getUrlRange(max(1, $employees->currentPage() - 2), min($employees->lastPage(), $employees->currentPage() + 2)) as $page => $url)
-                            @if ($page == $employees->currentPage())
-                                <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-black text-white shadow-xs">
-                                    {{ $page }}
-                                </span>
-                            @else
-                                <a href="{{ $url }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-sm font-extrabold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
-                                    {{ $page }}
-                                </a>
-                            @endif
-                        @endforeach
-
-                        {{-- Tombol Next --}}
-                        @if ($employees->hasMorePages())
-                            <a href="{{ $employees->nextPageUrl() }}" class="inline-flex items-center rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-extrabold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
-                                Next &raquo;
-                            </a>
-                        @else
-                            <span class="inline-flex cursor-not-allowed items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-bold text-slate-400 opacity-60">
-                                Next &raquo;
-                            </span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
 
     </div>
 
@@ -506,6 +508,224 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let activeEmployee = null;
+
+            /*
+            |--------------------------------------------------------------------------
+            | LIVE SEARCH + CLICKABLE SUMMARY BADGES
+            |--------------------------------------------------------------------------
+            */
+
+            const employeeLiveSearch =
+                document.getElementById('employeeLiveSearch');
+
+            const clearEmployeeLiveSearch =
+                document.getElementById('clearEmployeeLiveSearch');
+
+            const employeeVisibleCount =
+                document.getElementById('employeeVisibleCount');
+
+            const employeeSummaryBadges =
+                Array.from(
+                    document.querySelectorAll('.employeeSummaryBadge')
+                );
+
+            let activeEmployeeFilter = 'all';
+
+
+            const getEmployeeItems = () =>
+                Array.from(
+                    document.querySelectorAll('.employeeLiveItem')
+                );
+
+
+            const matchesEmployeeFilter = (item) => {
+
+                if (activeEmployeeFilter === 'all') {
+                    return true;
+                }
+
+                if (activeEmployeeFilter === 'active') {
+                    return item.dataset.active === '1';
+                }
+
+                if (activeEmployeeFilter === 'inactive') {
+                    return item.dataset.active === '0';
+                }
+
+                if (activeEmployeeFilter === 'must-change-username') {
+                    return item.dataset.mustChangeUsername === '1';
+                }
+
+                if (activeEmployeeFilter === 'must-change-password') {
+                    return item.dataset.mustChangePassword === '1';
+                }
+
+                if (activeEmployeeFilter === 'asia') {
+                    return item.dataset.group === 'asia';
+                }
+
+                if (activeEmployeeFilter === 'outsourcing') {
+                    return item.dataset.group === 'outsourcing';
+                }
+
+                return true;
+            };
+
+
+            const applyEmployeeLiveFilter = () => {
+
+                const keyword =
+                    (employeeLiveSearch?.value ?? '')
+                        .trim()
+                        .toLowerCase();
+
+                const items = getEmployeeItems();
+
+                /*
+                |--------------------------------------------------------------------------
+                | Desktop + Mobile berisi data yang sama.
+                | Hitung jumlah dari desktop row jika viewport desktop,
+                | dari mobile card jika viewport mobile.
+                |--------------------------------------------------------------------------
+                */
+                const isDesktop =
+                    window.matchMedia('(min-width: 1024px)').matches;
+
+                let visibleCount = 0;
+
+
+                items.forEach(item => {
+
+                    const searchText =
+                        (item.dataset.search ?? '')
+                            .toLowerCase();
+
+                    const searchMatch =
+                        keyword === ''
+                        ||
+                        searchText.includes(keyword);
+
+                    const filterMatch =
+                        matchesEmployeeFilter(item);
+
+                    const show =
+                        searchMatch && filterMatch;
+
+                    item.classList.toggle(
+                        'hidden',
+                        !show
+                    );
+
+
+                    const itemIsDesktop =
+                        item.tagName === 'TR';
+
+                    if (
+                        show
+                        &&
+                        (
+                            (isDesktop && itemIsDesktop)
+                            ||
+                            (!isDesktop && !itemIsDesktop)
+                        )
+                    ) {
+                        visibleCount++;
+                    }
+                });
+
+
+                if (employeeVisibleCount) {
+                    employeeVisibleCount.textContent =
+                        visibleCount;
+                }
+
+
+                if (clearEmployeeLiveSearch) {
+                    clearEmployeeLiveSearch.classList.toggle(
+                        'hidden',
+                        keyword === ''
+                    );
+                }
+            };
+
+
+            const setActiveSummaryBadge = (selectedBadge) => {
+
+                employeeSummaryBadges.forEach(badge => {
+
+                    badge.classList.remove(
+                        'ring-2',
+                        'ring-slate-900',
+                        'ring-offset-2'
+                    );
+
+                    badge.setAttribute(
+                        'aria-pressed',
+                        'false'
+                    );
+                });
+
+
+                selectedBadge.classList.add(
+                    'ring-2',
+                    'ring-slate-900',
+                    'ring-offset-2'
+                );
+
+                selectedBadge.setAttribute(
+                    'aria-pressed',
+                    'true'
+                );
+            };
+
+
+            employeeSummaryBadges.forEach(badge => {
+
+                badge.addEventListener('click', () => {
+
+                    activeEmployeeFilter =
+                        badge.dataset.filter ?? 'all';
+
+                    setActiveSummaryBadge(badge);
+                    applyEmployeeLiveFilter();
+                });
+            });
+
+
+            employeeLiveSearch?.addEventListener(
+                'input',
+                applyEmployeeLiveFilter
+            );
+
+
+            clearEmployeeLiveSearch?.addEventListener(
+                'click',
+                () => {
+
+                    employeeLiveSearch.value = '';
+                    employeeLiveSearch.focus();
+
+                    applyEmployeeLiveFilter();
+                }
+            );
+
+
+            window.addEventListener(
+                'resize',
+                applyEmployeeLiveFilter
+            );
+
+
+            const defaultBadge =
+                document.querySelector(
+                    '.employeeSummaryBadge[data-filter="all"]'
+                );
+
+            if (defaultBadge) {
+                setActiveSummaryBadge(defaultBadge);
+            }
+
+            applyEmployeeLiveFilter();
 
             const globalModal = document.getElementById('globalEmployeeModal');
             const globalBox = document.getElementById('globalEmployeeModalBox');
