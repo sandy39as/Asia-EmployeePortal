@@ -307,10 +307,6 @@
                                     </strong>
                                     karyawan
                                 </span>
-
-                                <span class="font-semibold text-amber-700">
-                                    Pencarian live tanpa reload
-                                </span>
                             </div>
                         </div>
                     </div>
