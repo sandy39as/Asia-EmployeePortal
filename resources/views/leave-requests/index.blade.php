@@ -1073,10 +1073,6 @@
                             Detail Pengajuan
                         </h3>
 
-                        <p class="text-xs text-slate-500 font-bold mt-0.5">
-                            {{ $item->uuid ?? 'Informasi cuti/izin' }}
-                        </p>
-
                     </div>
 
 
