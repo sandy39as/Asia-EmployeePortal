@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeaveRequest;
+use App\Mail\KabagLeaveRequestSubmittedMail;
 use App\Models\SpecialLeaveType;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -972,6 +974,75 @@ class LeaveRequestController extends Controller
 
 
             throw $e;
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | EMAIL NOTIFIKASI KE SEMUA KABAG
+        |--------------------------------------------------------------------------
+        |
+        | Email hanya notifikasi. Jika email gagal, pengajuan tetap tersimpan.
+        |
+        */
+
+        try {
+
+            $leaveRequest->loadMissing([
+                'employee',
+                'permissionType',
+                'specialLeaveType',
+            ]);
+
+            $sentEmails = [];
+
+            foreach ($kabags as $kabag) {
+
+                $kabagEmail = strtolower(
+                    trim(
+                        (string) ($kabag->email ?? '')
+                    )
+                );
+
+                if (
+                    $kabagEmail === ''
+                    ||
+                    in_array(
+                        $kabagEmail,
+                        $sentEmails,
+                        true
+                    )
+                ) {
+                    continue;
+                }
+
+                try {
+
+                    Mail::to(
+                        $kabagEmail
+                    )->send(
+                        new KabagLeaveRequestSubmittedMail(
+                            $leaveRequest,
+                            $employee,
+                            $kabag
+                        )
+                    );
+
+                    $sentEmails[] = $kabagEmail;
+
+                } catch (\Throwable $mailException) {
+
+                    report(
+                        $mailException
+                    );
+                }
+            }
+
+        } catch (\Throwable $notificationException) {
+
+            report(
+                $notificationException
+            );
         }
 
 
