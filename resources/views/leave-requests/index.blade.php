@@ -89,6 +89,15 @@
                     $kabagStatus = $item->kabag_status ?? 'pending';
                     $hrdStatus = $item->hrd_status ?? 'waiting';
 
+                    $isDirectHrd =
+                        ($item->approval_flow ?? null)
+                        === 'kabag_hrd';
+
+                    $itemFirstApprovalLabel =
+                        $isDirectHrd
+                            ? 'HRD'
+                            : $firstApprovalLabel;
+
                     /*
                     |--------------------------------------------------------------------------
                     | STATUS FINAL
@@ -108,11 +117,15 @@
                             && $hrdStatus === 'approved'
                             => 'Disetujui',
 
+                        $isDirectHrd
+                            && $hrdStatus === 'pending'
+                            => 'Menunggu HRD',
+
                         $kabagStatus === 'approved'
                             => 'Menunggu HRD',
 
                         default
-                            => 'Menunggu ' . $firstApprovalLabel,
+                            => 'Menunggu ' . $itemFirstApprovalLabel,
                     };
 
                     $statusBadge = match (true) {
@@ -229,7 +242,9 @@
 
                                 <div class="flex items-center gap-2 pt-1">
 
-                                    {{-- KABAG --}}
+                                    @if (! $isDirectHrd)
+
+                                    {{-- APPROVAL TAHAP PERTAMA --}}
                                     <span
                                         class="inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-extrabold
                                         {{
@@ -251,15 +266,15 @@
                                             •
                                         @endif
 
-                                        {{ $firstApprovalLabel }}
+                                        {{ $itemFirstApprovalLabel }}
 
                                     </span>
-
 
                                     <span class="text-slate-300">
                                         →
                                     </span>
 
+                                    @endif
 
                                     {{-- HRD --}}
                                     <span
@@ -916,16 +931,28 @@
             $hrdStatus =
                 $item->hrd_status ?? 'waiting';
 
+            $isDirectHrd =
+                ($item->approval_flow ?? null)
+                === 'kabag_hrd';
+
+            $itemFirstApprovalLabel =
+                $isDirectHrd
+                    ? 'HRD'
+                    : $firstApprovalLabel;
+
 
             $kabagLabel = match ($kabagStatus) {
                 'approved'
-                    => 'Disetujui ' . $firstApprovalLabel,
+                    => 'Disetujui ' . $itemFirstApprovalLabel,
 
                 'rejected'
-                    => 'Ditolak ' . $firstApprovalLabel,
+                    => 'Ditolak ' . $itemFirstApprovalLabel,
+
+                'skipped'
+                    => 'Tidak Memerlukan Atasan',
 
                 default
-                    => 'Menunggu ' . $firstApprovalLabel,
+                    => 'Menunggu ' . $itemFirstApprovalLabel,
             };
 
 
@@ -958,11 +985,19 @@
                     && $hrdStatus === 'approved'
                     => 'Disetujui',
 
+                $isDirectHrd
+                    && $hrdStatus === 'approved'
+                    => 'Disetujui',
+
+                $isDirectHrd
+                    && $hrdStatus === 'pending'
+                    => 'Menunggu HRD',
+
                 $kabagStatus === 'approved'
                     => 'Menunggu HRD',
 
                 default
-                    => 'Menunggu ' . $firstApprovalLabel,
+                    => 'Menunggu ' . $itemFirstApprovalLabel,
             };
 
 
@@ -1144,7 +1179,7 @@
                                 </div>
 
                                 <div class="mt-1 text-sm font-extrabold text-slate-900">
-                                    {{ $firstApprovalLabel }} → HRD
+                                    {{ $isDirectHrd ? 'HRD' : ($itemFirstApprovalLabel . ' → HRD') }}
                                 </div>
 
                             </div>
@@ -1152,7 +1187,8 @@
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-                                {{-- KABAG --}}
+                                @if (! $isDirectHrd)
+                                {{-- APPROVAL TAHAP PERTAMA --}}
                                 <div class="rounded-xl border p-3 {{ $kabagClass }}">
 
                                     <div class="flex justify-between gap-3">
@@ -1160,7 +1196,7 @@
                                         <div>
 
                                             <div class="text-[10px] font-extrabold uppercase tracking-wider opacity-70">
-                                                {{ $firstApprovalLabel }}
+                                                {{ $itemFirstApprovalLabel }}
                                             </div>
 
                                             <div class="mt-1 text-sm font-extrabold">
@@ -1242,10 +1278,11 @@
                                     @endif
 
                                 </div>
+                                @endif
 
 
                                 {{-- HRD --}}
-                                <div class="rounded-xl border p-3 {{ $hrdClass }}">
+                                <div class="rounded-xl border p-3 {{ $hrdClass }} {{ $isDirectHrd ? 'sm:col-span-2' : '' }}">
 
                                     <div class="flex justify-between gap-3">
 
@@ -1538,7 +1575,15 @@
                     @if (
                         $item->status === 'pending'
                         &&
-                        $kabagStatus === 'pending'
+                        (
+                            $kabagStatus === 'pending'
+                            ||
+                            (
+                                $isDirectHrd
+                                &&
+                                $hrdStatus === 'pending'
+                            )
+                        )
                     )
 
                         <form

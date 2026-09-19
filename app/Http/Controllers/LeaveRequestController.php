@@ -254,18 +254,17 @@ class LeaveRequestController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | TENTUKAN APPROVER TAHAP PERTAMA
+        | TENTUKAN ALUR APPROVAL
         |--------------------------------------------------------------------------
         |
         | Karyawan biasa:
-        |   employee -> Kabag -> HRD
+        |   Karyawan -> Kabag -> HRD
         |
-        | Kabag:
-        |   employee milik Kabag -> Atasan Kabag -> HRD
+        | Kabag dengan atasan:
+        |   Kabag -> Atasan Kabag -> HRD
         |
-        | Role hanya menentukan jalur approval. Identitas pengaju tetap memakai
-        | employee_id milik user sehingga source_karyawan_id / FaceLog tetap
-        | terhubung ke data karyawan yang sama.
+        | Kabag tanpa atasan:
+        |   Kabag -> HRD langsung
         |
         */
 
@@ -275,10 +274,14 @@ class LeaveRequestController extends Controller
         $isKabagSubmitter =
             $user->isKabag();
 
+        $approvers =
+            collect();
+
         $firstApproverLabel =
-            $isKabagSubmitter
-                ? 'Atasan'
-                : 'Kabag';
+            'Kabag';
+
+        $approvalFlow =
+            'employee_kabag_hrd';
 
 
         if ($isKabagSubmitter) {
@@ -300,6 +303,30 @@ class LeaveRequestController extends Controller
                     )
                     ->get();
 
+
+            if ($approvers->isNotEmpty()) {
+
+                $firstApproverLabel =
+                    'Atasan';
+
+                $approvalFlow =
+                    'kabag_supervisor_hrd';
+
+            } else {
+
+                /*
+                |--------------------------------------------------------------------------
+                | KABAG TANPA ATASAN -> LANGSUNG HRD
+                |--------------------------------------------------------------------------
+                */
+
+                $firstApproverLabel =
+                    'HRD';
+
+                $approvalFlow =
+                    'kabag_hrd';
+            }
+
         } else {
 
             $approvers =
@@ -313,35 +340,34 @@ class LeaveRequestController extends Controller
                         'users.name'
                     )
                     ->get();
-        }
 
 
-        if ($approvers->isEmpty()) {
+            if ($approvers->isEmpty()) {
 
-            $message =
-                $isKabagSubmitter
-                    ? 'Pengajuan belum dapat dikirim karena akun Kabag belum memiliki Atasan yang ter-mapping. Silakan hubungi administrator/HRD.'
-                    : 'Pengajuan belum dapat dikirim karena karyawan belum memiliki Kabag. Silakan hubungi administrator/HRD.';
+                $message =
+                    'Pengajuan belum dapat dikirim karena karyawan belum memiliki Kabag. '
+                    . 'Silakan hubungi administrator/HRD.';
 
 
-            if ($request->expectsJson()) {
+                if ($request->expectsJson()) {
 
-                return response()->json(
-                    [
-                        'success' => false,
-                        'message' => $message,
-                    ],
-                    422
-                );
+                    return response()->json(
+                        [
+                            'success' => false,
+                            'message' => $message,
+                        ],
+                        422
+                    );
+                }
+
+
+                return back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        $message
+                    );
             }
-
-
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    $message
-                );
         }
 
 
@@ -894,6 +920,9 @@ class LeaveRequestController extends Controller
                     'employee_id' =>
                         $employee->id,
 
+                    'approval_flow' =>
+                        $approvalFlow,
+
                     /*
                     |--------------------------------------------------------------------------
                     | KABAG BELUM DIPILIH
@@ -990,10 +1019,14 @@ class LeaveRequestController extends Controller
                     */
 
                     'kabag_status' =>
-                        'pending',
+                        $approvalFlow === 'kabag_hrd'
+                            ? 'skipped'
+                            : 'pending',
 
                     'hrd_status' =>
-                        'waiting',
+                        $approvalFlow === 'kabag_hrd'
+                            ? 'pending'
+                            : 'waiting',
 
                     'status' =>
                         'pending',
@@ -1020,7 +1053,7 @@ class LeaveRequestController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | EMAIL NOTIFIKASI KE APPROVER TAHAP PERTAMA
+        | EMAIL NOTIFIKASI KE APPROVER TAHAP PERTAMA (JIKA ADA)
         |--------------------------------------------------------------------------
         |
         | Karyawan biasa -> semua Kabag yang ter-mapping.
@@ -1125,6 +1158,9 @@ class LeaveRequestController extends Controller
 
                     'leave_category' =>
                         $leaveRequest->leave_category,
+
+                    'approval_flow' =>
+                        $leaveRequest->approval_flow,
 
                     'leave_days' =>
                         $leaveRequest->leave_days,

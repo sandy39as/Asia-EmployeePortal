@@ -50,6 +50,7 @@ class LeaveRequest extends Model
         'special_leave_type_id',
         'leave_days',
         'permission_type_id',
+        'approval_flow',
     ];
 
     protected function casts(): array
