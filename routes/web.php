@@ -13,6 +13,8 @@ use App\Http\Controllers\Kabag\KabagLeaveRequestController;
 use App\Http\Controllers\Master\EmployeeCredentialController;
 use App\Http\Controllers\Master\KabagController;
 use App\Http\Controllers\Master\KabagMappingController;
+use App\Http\Controllers\Master\KabagSupervisorMappingController;
+use App\Http\Controllers\Master\KabagIdentityMappingController;
 use App\Http\Controllers\Master\PermissionTypeController;
 use App\Http\Controllers\Master\SpecialLeaveTypeController;
 
@@ -524,6 +526,61 @@ Route::middleware([
                 [KabagMappingController::class, 'remove']
             )->name(
                 'kabag-mapping.remove'
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | MAPPING IDENTITAS KABAG
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get(
+                '/kabag-identity-mapping',
+                [
+                    KabagIdentityMappingController::class,
+                    'index',
+                ]
+            )->name(
+                'kabag-identity-mapping.index'
+            );
+
+            Route::post(
+                '/kabag-identity-mapping/{kabag}',
+                [
+                    KabagIdentityMappingController::class,
+                    'update',
+                ]
+            )->name(
+                'kabag-identity-mapping.update'
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | MAPPING ATASAN KABAG
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get(
+                '/kabag-supervisor-mapping',
+                [
+                    KabagSupervisorMappingController::class,
+                    'index',
+                ]
+            )->name(
+                'kabag-supervisor-mapping.index'
+            );
+
+
+            Route::post(
+                '/kabag-supervisor-mapping/{kabag}',
+                [
+                    KabagSupervisorMappingController::class,
+                    'update',
+                ]
+            )->name(
+                'kabag-supervisor-mapping.update'
             );
 
 

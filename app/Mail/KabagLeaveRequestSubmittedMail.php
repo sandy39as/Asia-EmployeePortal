@@ -26,7 +26,7 @@ class KabagLeaveRequestSubmittedMail extends Mailable
     {
         return new Envelope(
             subject:
-                'Pengajuan Baru Menunggu Persetujuan Kabag - '
+                'Pengajuan Baru Menunggu Persetujuan - '
                 . ($this->employee->nama ?? 'Karyawan')
         );
     }

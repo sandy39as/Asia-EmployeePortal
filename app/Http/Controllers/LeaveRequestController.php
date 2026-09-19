@@ -20,7 +20,8 @@ class LeaveRequestController extends Controller
 {
     public function index(Request $request): View
     {
-        $employee = $request->user()->employee;
+        $employee =
+            $request->user()->ownEmployee();
 
         abort_unless(
             $employee,
@@ -156,7 +157,7 @@ class LeaveRequestController extends Controller
         Request $request
     ): View {
         $employee =
-            $request->user()->employee;
+            $request->user()->ownEmployee();
 
         abort_unless(
             $employee,
@@ -211,7 +212,7 @@ class LeaveRequestController extends Controller
     ): RedirectResponse|JsonResponse {
 
         $employee =
-            $request->user()->employee;
+            $request->user()->ownEmployee();
 
 
         abort_unless(
@@ -253,34 +254,74 @@ class LeaveRequestController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | CEK KABAG
+        | TENTUKAN APPROVER TAHAP PERTAMA
         |--------------------------------------------------------------------------
         |
-        | Satu employee boleh memiliki lebih dari satu Kabag.
-        | Pengajuan tidak langsung dikunci ke salah satu Kabag.
-        | Semua Kabag yang ter-mapping dapat melihat pengajuan pending dan
-        | Kabag yang memproses pertama akan tercatat sebagai approver/rejector.
+        | Karyawan biasa:
+        |   employee -> Kabag -> HRD
+        |
+        | Kabag:
+        |   employee milik Kabag -> Atasan Kabag -> HRD
+        |
+        | Role hanya menentukan jalur approval. Identitas pengaju tetap memakai
+        | employee_id milik user sehingga source_karyawan_id / FaceLog tetap
+        | terhubung ke data karyawan yang sama.
         |
         */
 
-        $kabags =
-            $employee
-                ->kabag()
-                ->where(
-                    'users.is_active',
-                    true
-                )
-                ->orderBy(
-                    'users.name'
-                )
-                ->get();
+        $user =
+            $request->user();
+
+        $isKabagSubmitter =
+            $user->isKabag();
+
+        $firstApproverLabel =
+            $isKabagSubmitter
+                ? 'Atasan'
+                : 'Kabag';
 
 
-        if ($kabags->isEmpty()) {
+        if ($isKabagSubmitter) {
+
+            $approvers =
+                $user
+                    ->supervisors()
+                    ->where(
+                        'users.is_active',
+                        true
+                    )
+                    ->where(
+                        'users.id',
+                        '!=',
+                        $user->id
+                    )
+                    ->orderBy(
+                        'users.name'
+                    )
+                    ->get();
+
+        } else {
+
+            $approvers =
+                $employee
+                    ->kabag()
+                    ->where(
+                        'users.is_active',
+                        true
+                    )
+                    ->orderBy(
+                        'users.name'
+                    )
+                    ->get();
+        }
+
+
+        if ($approvers->isEmpty()) {
 
             $message =
-                'Pengajuan belum dapat dikirim karena karyawan belum memiliki Kabag. '
-                . 'Silakan hubungi administrator/HRD.';
+                $isKabagSubmitter
+                    ? 'Pengajuan belum dapat dikirim karena akun Kabag belum memiliki Atasan yang ter-mapping. Silakan hubungi administrator/HRD.'
+                    : 'Pengajuan belum dapat dikirim karena karyawan belum memiliki Kabag. Silakan hubungi administrator/HRD.';
 
 
             if ($request->expectsJson()) {
@@ -979,8 +1020,11 @@ class LeaveRequestController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | EMAIL NOTIFIKASI KE SEMUA KABAG
+        | EMAIL NOTIFIKASI KE APPROVER TAHAP PERTAMA
         |--------------------------------------------------------------------------
+        |
+        | Karyawan biasa -> semua Kabag yang ter-mapping.
+        | Kabag          -> semua Atasan Kabag yang ter-mapping.
         |
         | Email hanya notifikasi. Jika email gagal, pengajuan tetap tersimpan.
         |
@@ -996,19 +1040,19 @@ class LeaveRequestController extends Controller
 
             $sentEmails = [];
 
-            foreach ($kabags as $kabag) {
+            foreach ($approvers as $approver) {
 
-                $kabagEmail = strtolower(
+                $approverEmail = strtolower(
                     trim(
-                        (string) ($kabag->email ?? '')
+                        (string) ($approver->email ?? '')
                     )
                 );
 
                 if (
-                    $kabagEmail === ''
+                    $approverEmail === ''
                     ||
                     in_array(
-                        $kabagEmail,
+                        $approverEmail,
                         $sentEmails,
                         true
                     )
@@ -1019,16 +1063,17 @@ class LeaveRequestController extends Controller
                 try {
 
                     Mail::to(
-                        $kabagEmail
+                        $approverEmail
                     )->send(
                         new KabagLeaveRequestSubmittedMail(
                             $leaveRequest,
                             $employee,
-                            $kabag
+                            $approver
                         )
                     );
 
-                    $sentEmails[] = $kabagEmail;
+                    $sentEmails[] =
+                        $approverEmail;
 
                 } catch (\Throwable $mailException) {
 
@@ -1058,7 +1103,9 @@ class LeaveRequestController extends Controller
                 'success' => true,
 
                 'message' =>
-                    'Pengajuan berhasil dikirim dan menunggu persetujuan Kabag.',
+                    'Pengajuan berhasil dikirim dan menunggu persetujuan '
+                    . $firstApproverLabel
+                    . '.',
 
                 'data' => [
                     'id' =>
@@ -1091,15 +1138,34 @@ class LeaveRequestController extends Controller
                     'hrd_status' =>
                         $leaveRequest->hrd_status,
 
-                    'kabags' =>
-                        $kabags
+                    'first_approver_label' =>
+                        $firstApproverLabel,
+
+                    'approvers' =>
+                        $approvers
                             ->map(
-                                fn ($kabag) => [
+                                fn ($approver) => [
                                     'id' =>
-                                        $kabag->id,
+                                        $approver->id,
 
                                     'name' =>
-                                        $kabag->name,
+                                        $approver->name,
+                                ]
+                            )
+                            ->values(),
+
+                    /*
+                    | Dipertahankan untuk kompatibilitas response lama.
+                    */
+                    'kabags' =>
+                        $approvers
+                            ->map(
+                                fn ($approver) => [
+                                    'id' =>
+                                        $approver->id,
+
+                                    'name' =>
+                                        $approver->name,
                                 ]
                             )
                             ->values(),
@@ -1114,7 +1180,9 @@ class LeaveRequestController extends Controller
             )
             ->with(
                 'success',
-                'Pengajuan berhasil dikirim dan menunggu persetujuan Kabag.'
+                'Pengajuan berhasil dikirim dan menunggu persetujuan '
+                . $firstApproverLabel
+                . '.'
             );
     }
 
@@ -1125,7 +1193,7 @@ class LeaveRequestController extends Controller
     ): View {
 
         $employee =
-            $request->user()->employee;
+            $request->user()->ownEmployee();
 
 
         abort_unless(
@@ -1168,7 +1236,7 @@ class LeaveRequestController extends Controller
     ): RedirectResponse|JsonResponse {
 
         $employee =
-            $request->user()->employee;
+            $request->user()->ownEmployee();
 
 
         abort_unless(

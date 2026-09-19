@@ -76,7 +76,7 @@
                         </p>
 
                         <p style="margin:0 0 22px;font-size:14px;line-height:1.7;color:#475569;">
-                            Terdapat pengajuan baru dari karyawan yang berada di bawah mapping Kabag Anda.
+                            Terdapat pengajuan baru yang menunggu persetujuan Anda.
                             Silakan buka Employee Portal untuk meninjau dan memberikan keputusan.
                         </p>
 

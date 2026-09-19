@@ -14,6 +14,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'employee_id',
+        'self_employee_id',
         'name',
         'username',
         'email',
@@ -43,20 +44,26 @@ class User extends Authenticatable
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(
-            Employee::class
-        );
+        return $this->belongsTo(Employee::class, 'employee_id');
+    }
+
+    public function selfEmployee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'self_employee_id');
+    }
+
+    public function ownEmployee(): ?Employee
+    {
+        return $this->isKabag()
+            ? $this->selfEmployee
+            : $this->employee;
     }
 
     public function isHrd(): bool
     {
         return in_array(
             $this->role,
-            [
-                'hrd',
-                'admin',
-                'superadmin',
-            ],
+            ['hrd', 'admin', 'superadmin'],
             true
         );
     }
@@ -78,7 +85,26 @@ class User extends Authenticatable
             'kabag_employee',
             'kabag_user_id',
             'employee_id'
-        )
-            ->withTimestamps();
+        )->withTimestamps();
+    }
+
+    public function supervisors(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'kabag_supervisor',
+            'kabag_user_id',
+            'supervisor_user_id'
+        )->withTimestamps();
+    }
+
+    public function supervisedKabags(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'kabag_supervisor',
+            'supervisor_user_id',
+            'kabag_user_id'
+        )->withTimestamps();
     }
 }

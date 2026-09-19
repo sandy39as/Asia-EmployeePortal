@@ -1,5 +1,21 @@
 <x-app-layout>
 
+    @php
+        /*
+        |--------------------------------------------------------------------------
+        | LABEL APPROVAL TAHAP PERTAMA
+        |--------------------------------------------------------------------------
+        |
+        | Karyawan biasa: Kabag
+        | Kabag: Atasan
+        |
+        */
+        $firstApprovalLabel =
+            auth()->user()?->isKabag()
+                ? 'Atasan'
+                : 'Kabag';
+    @endphp
+
     {{-- ============================================================= --}}
     {{-- MOBILE MODAL FIX
          - 100dvh mengikuti viewport browser iPhone/Android
@@ -83,7 +99,7 @@
                             => 'Dibatalkan',
 
                         $kabagStatus === 'rejected'
-                            => 'Ditolak Kabag',
+                            => 'Ditolak ' . $firstApprovalLabel,
 
                         $hrdStatus === 'rejected'
                             => 'Ditolak HRD',
@@ -96,7 +112,7 @@
                             => 'Menunggu HRD',
 
                         default
-                            => 'Menunggu Kabag',
+                            => 'Menunggu ' . $firstApprovalLabel,
                     };
 
                     $statusBadge = match (true) {
@@ -235,7 +251,7 @@
                                             •
                                         @endif
 
-                                        Kabag
+                                        {{ $firstApprovalLabel }}
 
                                     </span>
 
@@ -903,13 +919,13 @@
 
             $kabagLabel = match ($kabagStatus) {
                 'approved'
-                    => 'Disetujui Kabag',
+                    => 'Disetujui ' . $firstApprovalLabel,
 
                 'rejected'
-                    => 'Ditolak Kabag',
+                    => 'Ditolak ' . $firstApprovalLabel,
 
                 default
-                    => 'Menunggu Kabag',
+                    => 'Menunggu ' . $firstApprovalLabel,
             };
 
 
@@ -933,7 +949,7 @@
                     => 'Dibatalkan',
 
                 $kabagStatus === 'rejected'
-                    => 'Ditolak Kabag',
+                    => 'Ditolak ' . $firstApprovalLabel,
 
                 $hrdStatus === 'rejected'
                     => 'Ditolak HRD',
@@ -946,7 +962,7 @@
                     => 'Menunggu HRD',
 
                 default
-                    => 'Menunggu Kabag',
+                    => 'Menunggu ' . $firstApprovalLabel,
             };
 
 
@@ -1073,6 +1089,10 @@
                             Detail Pengajuan
                         </h3>
 
+                        <p class="text-xs text-slate-500 font-bold mt-0.5">
+                            {{ $item->uuid ?? 'Informasi cuti/izin' }}
+                        </p>
+
                     </div>
 
 
@@ -1124,7 +1144,7 @@
                                 </div>
 
                                 <div class="mt-1 text-sm font-extrabold text-slate-900">
-                                    Kabag → HRD
+                                    {{ $firstApprovalLabel }} → HRD
                                 </div>
 
                             </div>
@@ -1140,7 +1160,7 @@
                                         <div>
 
                                             <div class="text-[10px] font-extrabold uppercase tracking-wider opacity-70">
-                                                Kabag
+                                                {{ $firstApprovalLabel }}
                                             </div>
 
                                             <div class="mt-1 text-sm font-extrabold">
@@ -1174,7 +1194,7 @@
                                                 <strong>
                                                     {{ $item->kabagApprovedBy?->name
                                                         ?? $item->kabag?->name
-                                                        ?? 'Kabag' }}
+                                                        ?? $firstApprovalLabel }}
                                                 </strong>
                                             </div>
 
@@ -1201,7 +1221,7 @@
                                                 <strong>
                                                     {{ $item->kabagRejectedBy?->name
                                                         ?? $item->kabag?->name
-                                                        ?? 'Kabag' }}
+                                                        ?? $firstApprovalLabel }}
                                                 </strong>
                                             </div>
 

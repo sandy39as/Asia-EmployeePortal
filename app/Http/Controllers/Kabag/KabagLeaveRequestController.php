@@ -5,62 +5,65 @@ namespace App\Http\Controllers\Kabag;
 use App\Http\Controllers\Controller;
 use App\Models\LeaveRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class KabagLeaveRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $kabag = $request->user();
+        $kabag =
+            $request->user();
+
 
         /*
         |--------------------------------------------------------------------------
-        | EMPLOYEE YANG DITANGANI KABAG
+        | EMPLOYEE YANG BOLEH DIPROSES
         |--------------------------------------------------------------------------
         |
-        | Pivot kabag_employee sekarang many-to-many.
-        | Satu employee dapat muncul pada lebih dari satu Kabag.
+        | 1. Karyawan biasa yang ter-mapping melalui kabag_employee.
+        | 2. Employee milik Kabag lain yang menjadikan user ini sebagai Atasan
+        |    melalui kabag_supervisor.
         |
         */
 
         $employeeIds =
-            $kabag
-                ->managedEmployees()
-                ->pluck(
-                    'employees.id'
-                );
+            $this->approvableEmployeeIds(
+                $kabag
+            );
 
 
-            $items =
-                        LeaveRequest::query()
-                            ->with([
-                                'employee',
-                                'kabag',
-                                'kabagApprovedBy',
-                                'kabagRejectedBy',
-                                'hrdApprovedBy',
-                                'hrdRejectedBy',
-                                'approvedBy',
-                                'rejectedBy',
-                                'permissionType',
-                                'specialLeaveType',
-                            ])
-                            ->whereIn(
-                                'employee_id',
-                                $employeeIds
-                            )
-                            ->orderByRaw("
-                                CASE 
-                                    WHEN kabag_status = 'pending' THEN 0
-                                    WHEN kabag_status = 'approved' AND hrd_status = 'pending' THEN 1
-                                    ELSE 2
-                                END ASC
-                            ")
-                            ->latest(
-                                'created_at'
-                            )
-                            ->paginate(20)
-                            ->withQueryString();
+        $items =
+            LeaveRequest::query()
+                ->with([
+                    'employee',
+                    'employee.user',
+                    'kabag',
+                    'kabagApprovedBy',
+                    'kabagRejectedBy',
+                    'hrdApprovedBy',
+                    'hrdRejectedBy',
+                    'approvedBy',
+                    'rejectedBy',
+                    'permissionType',
+                    'specialLeaveType',
+                ])
+                ->whereIn(
+                    'employee_id',
+                    $employeeIds
+                )
+                ->orderByRaw("
+                    CASE
+                        WHEN kabag_status = 'pending' THEN 0
+                        WHEN kabag_status = 'approved' AND hrd_status = 'pending' THEN 1
+                        ELSE 2
+                    END ASC
+                ")
+                ->latest(
+                    'created_at'
+                )
+                ->paginate(20)
+                ->withQueryString();
 
 
         return view(
@@ -81,7 +84,7 @@ class KabagLeaveRequestController extends Controller
             $request->user();
 
 
-        $this->ensureEmployeeBelongsToKabag(
+        $this->ensureUserCanApprove(
             $kabag,
             $leaveRequest
         );
@@ -94,17 +97,6 @@ class KabagLeaveRequestController extends Controller
                     $leaveRequest
                 ) {
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | LOCK PENGAJUAN
-                    |--------------------------------------------------------------------------
-                    |
-                    | Jika dua Kabag menekan approve hampir bersamaan, hanya request
-                    | pertama yang berhasil. Request kedua menunggu lock lalu melihat
-                    | status sudah bukan pending.
-                    |
-                    */
-
                     $item =
                         LeaveRequest::query()
                             ->whereKey(
@@ -114,7 +106,7 @@ class KabagLeaveRequestController extends Controller
                             ->firstOrFail();
 
 
-                    $this->ensureEmployeeBelongsToKabag(
+                    $this->ensureUserCanApprove(
                         $kabag,
                         $item
                     );
@@ -129,12 +121,12 @@ class KabagLeaveRequestController extends Controller
                                 false,
 
                             'message' =>
-                                'Pengajuan ini sudah diproses oleh Kabag '
+                                'Pengajuan ini sudah diproses oleh '
                                 . (
                                     $item->kabagApprovedBy?->name
                                     ?? $item->kabagRejectedBy?->name
                                     ?? $item->kabag?->name
-                                    ?? 'lain'
+                                    ?? 'approver lain'
                                 )
                                 . '.',
                         ];
@@ -149,8 +141,13 @@ class KabagLeaveRequestController extends Controller
 
                         /*
                         |--------------------------------------------------------------------------
-                        | KABAG YANG MEMPROSES
+                        | APPROVER TAHAP PERTAMA
                         |--------------------------------------------------------------------------
+                        |
+                        | Field kabag_* tetap dipakai agar kompatibel dengan struktur
+                        | existing. Untuk pengajuan milik Kabag, user yang tercatat
+                        | di sini adalah Atasan Kabag.
+                        |
                         */
 
                         'kabag_user_id' =>
@@ -196,7 +193,7 @@ class KabagLeaveRequestController extends Controller
                             true,
 
                         'message' =>
-                            'Pengajuan berhasil disetujui Kabag dan diteruskan ke HRD.',
+                            'Pengajuan berhasil disetujui dan diteruskan ke HRD.',
                     ];
                 }
             );
@@ -219,7 +216,7 @@ class KabagLeaveRequestController extends Controller
             $request->user();
 
 
-        $this->ensureEmployeeBelongsToKabag(
+        $this->ensureUserCanApprove(
             $kabag,
             $leaveRequest
         );
@@ -249,12 +246,6 @@ class KabagLeaveRequestController extends Controller
                     $validated
                 ) {
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | LOCK PENGAJUAN
-                    |--------------------------------------------------------------------------
-                    */
-
                     $item =
                         LeaveRequest::query()
                             ->whereKey(
@@ -264,7 +255,7 @@ class KabagLeaveRequestController extends Controller
                             ->firstOrFail();
 
 
-                    $this->ensureEmployeeBelongsToKabag(
+                    $this->ensureUserCanApprove(
                         $kabag,
                         $item
                     );
@@ -279,12 +270,12 @@ class KabagLeaveRequestController extends Controller
                                 false,
 
                             'message' =>
-                                'Pengajuan ini sudah diproses oleh Kabag '
+                                'Pengajuan ini sudah diproses oleh '
                                 . (
                                     $item->kabagApprovedBy?->name
                                     ?? $item->kabagRejectedBy?->name
                                     ?? $item->kabag?->name
-                                    ?? 'lain'
+                                    ?? 'approver lain'
                                 )
                                 . '.',
                         ];
@@ -296,12 +287,6 @@ class KabagLeaveRequestController extends Controller
 
 
                     $item->update([
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | KABAG YANG MEMPROSES
-                        |--------------------------------------------------------------------------
-                        */
 
                         'kabag_user_id' =>
                             $kabag->id,
@@ -328,7 +313,7 @@ class KabagLeaveRequestController extends Controller
 
                         /*
                         |--------------------------------------------------------------------------
-                        | FINAL DITOLAK DI KABAG
+                        | FINAL DITOLAK DI APPROVAL TAHAP PERTAMA
                         |--------------------------------------------------------------------------
                         */
 
@@ -348,7 +333,7 @@ class KabagLeaveRequestController extends Controller
                             true,
 
                         'message' =>
-                            'Pengajuan berhasil ditolak oleh Kabag.',
+                            'Pengajuan berhasil ditolak.',
                     ];
                 }
             );
@@ -363,24 +348,105 @@ class KabagLeaveRequestController extends Controller
     }
 
 
-    protected function ensureEmployeeBelongsToKabag(
+    /*
+    |--------------------------------------------------------------------------
+    | DAFTAR EMPLOYEE YANG BOLEH DIPROSES USER KABAG
+    |--------------------------------------------------------------------------
+    */
+
+    protected function approvableEmployeeIds(
+        $kabag
+    ): Collection {
+
+        $managedEmployeeIds =
+            $kabag
+                ->managedEmployees()
+                ->pluck(
+                    'employees.id'
+                );
+
+
+        $supervisedKabagEmployeeIds =
+            $kabag
+                ->supervisedKabags()
+                ->where(
+                    'users.is_active',
+                    true
+                )
+                ->whereNotNull(
+                    'users.self_employee_id'
+                )
+                ->pluck(
+                    'users.self_employee_id'
+                );
+
+
+        return $managedEmployeeIds
+            ->merge(
+                $supervisedKabagEmployeeIds
+            )
+            ->filter()
+            ->map(
+                fn ($id) =>
+                    (int) $id
+            )
+            ->unique()
+            ->values();
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | AUTHORIZATION APPROVAL
+    |--------------------------------------------------------------------------
+    */
+
+    protected function ensureUserCanApprove(
         $kabag,
         LeaveRequest $leaveRequest
     ): void {
 
-        $allowed =
+        /*
+        | Tidak boleh approve/reject pengajuan sendiri.
+        */
+        abort_if(
+            $kabag->self_employee_id
+            &&
+            (int) $kabag->self_employee_id
+                ===
+            (int) $leaveRequest->employee_id,
+            403
+        );
+
+
+        $allowedAsEmployeeKabag =
             $kabag
                 ->managedEmployees()
                 ->where(
                     'employees.id',
-                    $leaveRequest
-                        ->employee_id
+                    $leaveRequest->employee_id
+                )
+                ->exists();
+
+
+        $allowedAsSupervisor =
+            $kabag
+                ->supervisedKabags()
+                ->where(
+                    'users.is_active',
+                    true
+                )
+                ->where(
+                    'users.self_employee_id',
+                    $leaveRequest->employee_id
                 )
                 ->exists();
 
 
         abort_unless(
-            $allowed,
+            $allowedAsEmployeeKabag
+            ||
+            $allowedAsSupervisor,
             403
         );
     }

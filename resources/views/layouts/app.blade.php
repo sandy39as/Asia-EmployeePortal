@@ -191,6 +191,22 @@
                             <span>Mapping Kabag</span>
                         </a>
 
+                        <a href="{{ route('master.kabag-identity-mapping.index') }}"
+                           class="{{ $baseLinkClass }} {{ request()->routeIs('master.kabag-identity-mapping.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                            <svg class="h-5 w-5 {{ request()->routeIs('master.kabag-identity-mapping.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0M18 8.25h3.75m-1.875-1.875v3.75" />
+                            </svg>
+                            <span>Identitas Kabag</span>
+                        </a>
+
+                        <a href="{{ route('master.kabag-supervisor-mapping.index') }}"
+                           class="{{ $baseLinkClass }} {{ request()->routeIs('master.kabag-supervisor-mapping.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                            <svg class="h-5 w-5 {{ request()->routeIs('master.kabag-supervisor-mapping.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm7-3h6m-3-3v6" />
+                            </svg>
+                            <span>Mapping Atasan Kabag</span>
+                        </a>
+
                         <a href="{{ route('master.special-leave-types.index') }}"
                            class="{{ $baseLinkClass }} {{ request()->routeIs('master.special-leave-types.*') ? $activeLinkClass : $inactiveLinkClass }}">
                             <svg class="h-5 w-5 {{ request()->routeIs('master.special-leave-types.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -238,6 +254,14 @@
                     <div class="px-3 pt-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Persetujuan
                     </div>
+
+                    <a href="{{ route('leave-requests.index') }}"
+                       class="{{ $baseLinkClass }} {{ request()->routeIs('leave-requests.*') ? $activeLinkClass : $inactiveLinkClass }}">
+                        <svg class="h-5 w-5 {{ request()->routeIs('leave-requests.*') ? 'text-slate-900' : 'text-slate-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2.25 4.5H6.75A2.25 2.25 0 014.5 18.25V5.75A2.25 2.25 0 016.75 3.5h7.5L19.5 8.75v9.5a2.25 2.25 0 01-2.25 2.25z" />
+                        </svg>
+                        <span>Pengajuan Saya</span>
+                    </a>
 
                     <a href="{{ route('kabag.leave-requests.index') }}"
                        class="{{ $baseLinkClass }} {{ request()->routeIs('kabag.leave-requests.*') ? $activeLinkClass : $inactiveLinkClass }}">
