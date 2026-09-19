@@ -262,6 +262,7 @@
                     @forelse ($employees as $employee)
                         @php
                             $hasUser = (bool) $employee->user;
+                            $hasKabagAccount = (bool) $employee->kabagAccount;
                             $mustChangeUsername = (bool) ($employee->user?->must_change_username ?? false);
                             $mustChangePassword = (bool) ($employee->user?->must_change_password ?? false);
                             $annualBalance = $employee->employment_group === 'asia' ? $employee->leaveBalances->first() : null;
@@ -276,7 +277,9 @@
                                 ($employee->employee_code ?? '') . ' ' .
                                 ($employee->jabatan ?? '') . ' ' .
                                 ($employee->source_kategori_karyawan_name ?? '') . ' ' .
-                                ($employee->user?->username ?? '')
+                                ($employee->user?->username ?? '') . ' ' .
+                                ($employee->kabagAccount?->name ?? '') . ' ' .
+                                ($employee->kabagAccount?->username ?? '')
                             )) }}">
                             <td class="px-5 py-4">
                                 <div class="font-extrabold text-slate-900 text-base leading-snug">{{ $employee->nama }}</div>
@@ -356,6 +359,9 @@
                                             'kategori' => $employee->source_kategori_karyawan_name ?: '-',
                                             'group' => $employee->employment_group,
                                             'has_user' => $hasUser,
+                                            'has_kabag_account' => $hasKabagAccount,
+                                            'kabag_name' => $employee->kabagAccount?->name,
+                                            'kabag_username' => $employee->kabagAccount?->username,
                                             'must_change_username' => $mustChangeUsername,
                                             'must_change_password' => $mustChangePassword,
                                             'entitlement' => $annualBalance?->entitlement ?? 12,
