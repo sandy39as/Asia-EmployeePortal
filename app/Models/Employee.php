@@ -39,23 +39,37 @@ class Employee extends Model
 
     public function user(): HasOne
     {
-        return $this->hasOne(User::class);
+        return $this->hasOne(
+            User::class,
+            'employee_id'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | AKUN KABAG TERHUBUNG
+    |--------------------------------------------------------------------------
+    |
+    | Akun Kabag menggunakan users.self_employee_id agar tidak bentrok dengan
+    | akun karyawan existing yang menggunakan users.employee_id.
+    |
+    */
+
+    public function kabagAccount(): HasOne
+    {
+        return $this->hasOne(
+            User::class,
+            'self_employee_id'
+        )->where(
+            'role',
+            'kabag'
+        );
     }
 
     public function leaveRequests(): HasMany
     {
         return $this->hasMany(LeaveRequest::class);
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | MULTI-KABAG
-    |--------------------------------------------------------------------------
-    |
-    | Satu employee dapat memiliki lebih dari satu Kabag.
-    | Method kabag() dipertahankan agar kode lama tetap kompatibel.
-    |
-    */
 
     public function kabag(): BelongsToMany
     {
@@ -71,15 +85,6 @@ class Employee extends Model
             )
             ->withTimestamps();
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | ALIAS PLURAL
-    |--------------------------------------------------------------------------
-    |
-    | Untuk kode baru, nama kabags() lebih jelas karena relasinya many-to-many.
-    |
-    */
 
     public function kabags(): BelongsToMany
     {

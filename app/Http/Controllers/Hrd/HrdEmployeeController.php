@@ -85,6 +85,7 @@ class HrdEmployeeController extends Controller
             (clone $baseQuery)
                 ->with([
                     'user',
+                    'kabagAccount',
 
                     'leaveBalances' =>
                         fn ($query) =>

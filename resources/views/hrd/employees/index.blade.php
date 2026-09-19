@@ -123,6 +123,7 @@
             @forelse ($employees as $employee)
                 @php
                     $hasUser = (bool) $employee->user;
+                    $hasKabagAccount = (bool) $employee->kabagAccount;
                     $mustChangeUsername = (bool) ($employee->user?->must_change_username ?? false);
                     $mustChangePassword = (bool) ($employee->user?->must_change_password ?? false);
                     $annualBalance = $employee->employment_group === 'asia' ? $employee->leaveBalances->first() : null;
@@ -138,7 +139,9 @@
                          ($employee->employee_code ?? '') . ' ' .
                          ($employee->jabatan ?? '') . ' ' .
                          ($employee->source_kategori_karyawan_name ?? '') . ' ' .
-                         ($employee->user?->username ?? '')
+                         ($employee->user?->username ?? '') . ' ' .
+                         ($employee->kabagAccount?->name ?? '') . ' ' .
+                         ($employee->kabagAccount?->username ?? '')
                      )) }}">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
@@ -154,6 +157,15 @@
                                     <span class="rounded-lg border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-extrabold text-sky-700">ASIA</span>
                                 @elseif ($employee->employment_group === 'outsourcing')
                                     <span class="rounded-lg border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-extrabold text-orange-700">OUTSOURCING</span>
+                                @endif
+
+                                @if ($hasKabagAccount)
+                                    <span
+                                        title="Akun Kabag: {{ $employee->kabagAccount->name }}{{ $employee->kabagAccount->username ? ' (' . $employee->kabagAccount->username . ')' : '' }}"
+                                        class="rounded-lg border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-extrabold text-violet-700"
+                                    >
+                                        Akun Kabag Terhubung
+                                    </span>
                                 @endif
                             </div>
                         </div>
@@ -209,6 +221,9 @@
                                     'kategori' => $employee->source_kategori_karyawan_name ?: '-',
                                     'group' => $employee->employment_group,
                                     'has_user' => $hasUser,
+                                    'has_kabag_account' => $hasKabagAccount,
+                                    'kabag_name' => $employee->kabagAccount?->name,
+                                    'kabag_username' => $employee->kabagAccount?->username,
                                     'must_change_username' => $mustChangeUsername,
                                     'must_change_password' => $mustChangePassword,
                                     'entitlement' => $annualBalance?->entitlement ?? 12,
@@ -277,6 +292,17 @@
                                         <span class="rounded-lg border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-extrabold text-orange-700">OUTSOURCING</span>
                                     @else
                                         <span class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-400">Belum Sync</span>
+                                    @endif
+
+                                    @if ($hasKabagAccount)
+                                        <div class="mt-1.5">
+                                            <span
+                                                title="Akun Kabag: {{ $employee->kabagAccount->name }}{{ $employee->kabagAccount->username ? ' (' . $employee->kabagAccount->username . ')' : '' }}"
+                                                class="rounded-lg border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-extrabold text-violet-700"
+                                            >
+                                                Akun Kabag Terhubung
+                                            </span>
+                                        </div>
                                     @endif
                                 </div>
                             </td>
@@ -406,6 +432,23 @@
                     <div class="mt-1.5 flex items-center justify-between gap-2">
                         <span id="modalKategori" class="font-bold text-slate-800">-</span>
                         <span id="modalGroupBadge">-</span>
+                    </div>
+                </div>
+
+                {{-- AKUN KABAG TERHUBUNG --}}
+                <div id="modalKabagAccountSection" class="hidden rounded-xl border border-violet-200 bg-violet-50 p-3">
+                    <span class="block text-xs font-bold uppercase tracking-wider text-violet-500">
+                        Akun Kabag Terhubung
+                    </span>
+
+                    <div class="mt-1.5">
+                        <div id="modalKabagAccountName" class="font-extrabold text-violet-900">
+                            -
+                        </div>
+
+                        <div id="modalKabagAccountUsername" class="mt-0.5 font-mono text-xs font-bold text-violet-700">
+                            -
+                        </div>
                     </div>
                 </div>
 
@@ -785,6 +828,23 @@
                     } else {
                         groupBadge.className = 'rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-bold text-slate-500';
                         groupBadge.textContent = 'Belum Sync';
+                    }
+
+                    const kabagSection =
+                        document.getElementById('modalKabagAccountSection');
+
+                    if (activeEmployee.has_kabag_account) {
+                        kabagSection?.classList.remove('hidden');
+
+                        document.getElementById('modalKabagAccountName').textContent =
+                            activeEmployee.kabag_name || 'Kabag';
+
+                        document.getElementById('modalKabagAccountUsername').textContent =
+                            activeEmployee.kabag_username
+                                ? `ID Login Kabag: ${activeEmployee.kabag_username}`
+                                : 'ID Login Kabag: -';
+                    } else {
+                        kabagSection?.classList.add('hidden');
                     }
 
                     const leaveSection = document.getElementById('modalLeaveSection');
